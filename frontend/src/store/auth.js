@@ -94,7 +94,8 @@ const fallbackMenus = [
     orderNum: 6,
     children: [
       { id: 71, menuName: '预约管理', path: '/home-service/orders', icon: 'AlarmClock', menuType: 'M', orderNum: 1 },
-      { id: 72, menuName: '服务记录', path: '/home-service/records', icon: 'Memo', menuType: 'M', orderNum: 2 }
+      { id: 72, menuName: '服务记录', path: '/home-service/records', icon: 'Memo', menuType: 'M', orderNum: 2 },
+      { id: 73, menuName: '服务评估', path: '/home-service/assessment', icon: 'Document', menuType: 'M', orderNum: 3 }
     ]
   },
   {

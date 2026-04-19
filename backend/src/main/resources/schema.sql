@@ -446,6 +446,7 @@ CREATE TABLE IF NOT EXISTS t_dispense_record (
 CREATE TABLE IF NOT EXISTS t_service_item (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
+  category VARCHAR(50) COMMENT '服务大类',
   price DECIMAL(10,2) NOT NULL COMMENT '收费标准',
   unit VARCHAR(20) COMMENT '计费单位(次/小时)',
   description VARCHAR(500),
@@ -591,6 +592,96 @@ CREATE TABLE IF NOT EXISTS t_subsidy_policy (
   expire_date DATE COMMENT '失效日期(null=长期)',
   enabled TINYINT DEFAULT 1,
   remark VARCHAR(500),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- 业务表 - 会计凭证
+-- ========================================
+
+-- t_accounting_subject: 会计科目
+CREATE TABLE IF NOT EXISTS t_accounting_subject (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(10) NOT NULL UNIQUE,
+  name VARCHAR(50) NOT NULL,
+  subject_type VARCHAR(20) NOT NULL,
+  direction VARCHAR(10) NOT NULL,
+  enabled TINYINT DEFAULT 1,
+  sort_order INT DEFAULT 0
+);
+
+-- t_voucher_header: 凭证主表(头)
+CREATE TABLE IF NOT EXISTS t_voucher_header (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  voucher_word VARCHAR(10) NOT NULL DEFAULT '记',
+  voucher_no VARCHAR(30) NOT NULL UNIQUE,
+  voucher_date DATE NOT NULL,
+  attachment_count INT DEFAULT 0,
+  description VARCHAR(500),
+  status VARCHAR(20) DEFAULT 'DRAFT',
+  related_biz_type VARCHAR(30),
+  related_biz_id BIGINT,
+  creator_id BIGINT NOT NULL,
+  reviewer_id BIGINT,
+  review_time DATETIME,
+  reject_reason VARCHAR(200),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- t_voucher_entry: 凭证分录明细表
+CREATE TABLE IF NOT EXISTS t_voucher_entry (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  voucher_id BIGINT NOT NULL,
+  line_no INT NOT NULL,
+  summary VARCHAR(200),
+  subject_id BIGINT NOT NULL,
+  debit_amount DECIMAL(12,2) DEFAULT 0.00,
+  credit_amount DECIMAL(12,2) DEFAULT 0.00
+);
+
+-- ========== 服务质量评估表(GB/T 43153-2023 第7章) ==========
+CREATE TABLE IF NOT EXISTS t_service_assessment (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  assessment_no VARCHAR(30) NOT NULL UNIQUE,
+  assessment_date DATE NOT NULL,
+  assessor_name VARCHAR(50),
+  assessor_org VARCHAR(100),
+  assessment_period VARCHAR(50),
+  elderly_id BIGINT,
+  elderly_name VARCHAR(50),
+  service_address VARCHAR(300),
+  agreement_signed TINYINT DEFAULT 0,
+  agreement_complete TINYINT DEFAULT 0,
+  plan_formulated TINYINT DEFAULT 0,
+  plan_matches_needs TINYINT DEFAULT 0,
+  agreement_score INT DEFAULT 0,
+  service_on_time TINYINT DEFAULT 0,
+  staff_identified TINYINT DEFAULT 0,
+  risk_informed TINYINT DEFAULT 0,
+  service_per_plan TINYINT DEFAULT 0,
+  emergency_handled TINYINT DEFAULT 0,
+  acceptance_done TINYINT DEFAULT 0,
+  fulfillment_score INT DEFAULT 0,
+  record_complete TINYINT DEFAULT 0,
+  record_timely TINYINT DEFAULT 0,
+  record_accurate TINYINT DEFAULT 0,
+  record_score INT DEFAULT 0,
+  elderly_satisfaction INT DEFAULT 0,
+  satisfaction_method VARCHAR(50),
+  total_score INT DEFAULT 0,
+  grade VARCHAR(20),
+  issues_found TEXT,
+  improvement_measures TEXT,
+  improvement_deadline DATE,
+  photo_urls TEXT,
+  assessor_signature_url VARCHAR(500),
+  org_signature_url VARCHAR(500),
+  status VARCHAR(20) DEFAULT 'DRAFT',
+  creator_id BIGINT,
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP

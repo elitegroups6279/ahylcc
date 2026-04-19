@@ -23,6 +23,7 @@ public class HomeServiceItemService {
             ServiceItemOption opt = new ServiceItemOption();
             opt.setId(i.getId());
             opt.setName(i.getName());
+            opt.setCategory(i.getCategory());
             return opt;
         }).collect(Collectors.toList());
     }

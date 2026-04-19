@@ -171,6 +171,12 @@ const routes = [
         component: () => import('../pages/home-service/Records.vue'),
         meta: { title: '服务记录', permission: 'home-service:records', parent: '上门服务', requiresAuth: true }
       },
+      {
+        path: 'home-service/assessment',
+        name: 'HomeServiceAssessment',
+        component: () => import('../pages/home-service/Assessment.vue'),
+        meta: { title: '服务评估', permission: 'home-service:assessment', parent: '上门服务', requiresAuth: true }
+      },
       // 系统管理
       {
         path: 'system/accounts',

@@ -18,6 +18,7 @@
         </div>
       </template>
 
+      <div style="overflow-x: auto">
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="elderlyName" label="老人" width="160" />
@@ -36,6 +37,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <div class="pager">
         <el-pagination
@@ -54,7 +56,7 @@
     <el-dialog v-model="dialogVisible" title="创建预约" width="720px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-row :gutter="16">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="老人" prop="elderlyId">
               <el-select
                 v-model="form.elderlyId"
@@ -70,21 +72,23 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="服务项目" prop="serviceItemId">
               <el-select v-model="form.serviceItemId" placeholder="请选择" style="width: 100%">
-                <el-option v-for="i in itemOptions" :key="i.id" :label="i.name" :value="i.id" />
+                <el-option-group v-for="group in groupedItems" :key="group.label" :label="group.label">
+                  <el-option v-for="item in group.options" :key="item.id" :label="item.name" :value="item.id" />
+                </el-option-group>
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="16">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="期望时间" prop="expectedTime">
               <el-date-picker v-model="form.expectedTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="服务人员" prop="assignedStaffId">
               <el-select
                 v-model="form.assignedStaffId"
@@ -117,7 +121,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../api/client'
@@ -151,6 +155,16 @@ const elderlyOptions = ref([])
 const staffLoading = ref(false)
 const staffOptions = ref([])
 const itemOptions = ref([])
+
+const groupedItems = computed(() => {
+  const map = new Map()
+  for (const item of itemOptions.value) {
+    const cat = item.category || '未分类'
+    if (!map.has(cat)) map.set(cat, [])
+    map.get(cat).push(item)
+  }
+  return Array.from(map.entries()).map(([label, options]) => ({ label, options }))
+})
 
 function elderlyLabel(o) {
   const no = o.unique_no || o.uniqueNo || ''

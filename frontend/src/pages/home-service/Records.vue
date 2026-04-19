@@ -13,6 +13,7 @@
         </div>
       </template>
 
+      <div style="overflow-x: auto">
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="orderId" label="订单ID" width="100" />
@@ -25,6 +26,7 @@
         <el-table-column prop="rating" label="评分" width="90" />
         <el-table-column prop="serviceContent" label="服务内容" min-width="260" />
       </el-table>
+      </div>
 
       <div class="pager">
         <el-pagination
@@ -43,24 +45,24 @@
     <el-dialog v-model="dialogVisible" title="新增服务记录" width="760px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-row :gutter="16">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="订单ID" prop="orderId">
               <el-input v-model="form.orderId" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="金额" prop="amount">
               <el-input-number v-model="form.amount" :min="0" :precision="2" :step="10" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="16">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="开始时间" prop="actualStartTime">
               <el-date-picker v-model="form.actualStartTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="结束时间" prop="actualEndTime">
               <el-date-picker v-model="form.actualEndTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" />
             </el-form-item>
@@ -70,12 +72,21 @@
           <el-input v-model="form.serviceContent" type="textarea" :rows="4" />
         </el-form-item>
         <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="签字URL" prop="signatureUrl">
-              <el-input v-model="form.signatureUrl" />
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="签字" prop="signatureUrl">
+              <el-upload
+                action="/api/upload/image"
+                :headers="uploadHeaders"
+                :show-file-list="false"
+                :on-success="onSignatureUploadSuccess"
+                accept="image/*"
+              >
+                <el-image v-if="form.signatureUrl" :src="fullUrl(form.signatureUrl)" fit="contain" style="width: 200px; height: 80px; border: 1px dashed #dcdfe6; border-radius: 4px" />
+                <el-button v-else size="small">上传签字图片</el-button>
+              </el-upload>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="评分" prop="rating">
               <el-input-number v-model="form.rating" :min="1" :max="5" />
             </el-form-item>
@@ -101,12 +112,15 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { api } from '../../api/client'
+import { useAuthStore } from '../../store/auth'
 
 const route = useRoute()
+const authStore = useAuthStore()
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const loading = ref(false)
 const saving = ref(false)
 const list = ref([])
@@ -133,6 +147,24 @@ const form = reactive({
 
 const rules = {
   orderId: [{ required: true, message: '请输入订单ID', trigger: 'blur' }]
+}
+
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${authStore.accessToken}`
+}))
+
+function fullUrl(url) {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return apiBaseUrl + url
+}
+
+function onSignatureUploadSuccess(resp) {
+  if (resp.code === 200 && resp.data) {
+    form.signatureUrl = resp.data
+  } else {
+    ElMessage.error('上传失败')
+  }
 }
 
 function formatAmount(amount) {

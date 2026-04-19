@@ -8,27 +8,39 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("t_service_item")
-public class ServiceItem {
+@TableName("t_voucher_header")
+public class VoucherHeader {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String name;
+    private String voucherWord;
 
-    private String category;
+    private String voucherNo;
 
-    private BigDecimal price;
+    private LocalDate voucherDate;
 
-    private String unit;
+    private Integer attachmentCount;
 
     private String description;
 
-    private Integer status;
+    private String status;
+
+    private String relatedBizType;
+
+    private Long relatedBizId;
+
+    private Long creatorId;
+
+    private Long reviewerId;
+
+    private LocalDateTime reviewTime;
+
+    private String rejectReason;
 
     @TableLogic
     private Integer deleted;
