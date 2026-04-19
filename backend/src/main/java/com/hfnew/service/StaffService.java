@@ -37,7 +37,7 @@ public class StaffService {
     private final StaffAssignmentMapper staffAssignmentMapper;
     private final JdbcTemplate jdbcTemplate;
 
-    public PageResult<StaffVO> list(int page, int pageSize, String keyword, String status) {
+    public PageResult<StaffVO> list(int page, int pageSize, String keyword, String status, String positionType) {
         Page<Staff> pageReq = new Page<>(page, pageSize);
         LambdaQueryWrapper<Staff> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
@@ -45,6 +45,9 @@ public class StaffService {
         }
         if (StringUtils.hasText(status)) {
             wrapper.eq(Staff::getStatus, status);
+        }
+        if (StringUtils.hasText(positionType)) {
+            wrapper.eq(Staff::getPositionType, positionType);
         }
         wrapper.orderByDesc(Staff::getCreateTime).orderByDesc(Staff::getId);
         IPage<Staff> result = staffMapper.selectPage(pageReq, wrapper);
@@ -54,11 +57,14 @@ public class StaffService {
         return new PageResult<>(result.getCurrent(), result.getSize(), result.getTotal(), list);
     }
 
-    public List<StaffOption> options(String keyword) {
+    public List<StaffOption> options(String keyword, String positionType) {
         LambdaQueryWrapper<Staff> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Staff::getStatus, "ACTIVE");
         if (StringUtils.hasText(keyword)) {
             wrapper.like(Staff::getName, keyword);
+        }
+        if (StringUtils.hasText(positionType)) {
+            wrapper.eq(Staff::getPositionType, positionType);
         }
         wrapper.orderByDesc(Staff::getId);
         return staffMapper.selectList(wrapper).stream().limit(50).map(s -> {
@@ -108,6 +114,7 @@ public class StaffService {
         s.setProbationMonths(request.getProbationMonths());
         s.setHasCaregiverCert(request.getHasCaregiverCert());
         s.setHasHealthCert(request.getHasHealthCert());
+        s.setPositionType(StringUtils.hasText(request.getPositionType()) ? request.getPositionType() : "CAREGIVER");
         // 自动计算实习到期日期
         if ("INTERN".equals(s.getProbationStatus()) && s.getProbationMonths() != null && s.getHireDate() != null) {
             s.setProbationEndDate(s.getHireDate().plus(s.getProbationMonths(), ChronoUnit.MONTHS));
@@ -135,6 +142,7 @@ public class StaffService {
         if (request.getProbationMonths() != null) s.setProbationMonths(request.getProbationMonths());
         if (request.getHasCaregiverCert() != null) s.setHasCaregiverCert(request.getHasCaregiverCert());
         if (request.getHasHealthCert() != null) s.setHasHealthCert(request.getHasHealthCert());
+        if (request.getPositionType() != null) s.setPositionType(request.getPositionType());
         // 自动计算实习到期日期
         if ("INTERN".equals(s.getProbationStatus()) && s.getProbationMonths() != null && s.getHireDate() != null) {
             s.setProbationEndDate(s.getHireDate().plus(s.getProbationMonths(), ChronoUnit.MONTHS));
@@ -205,6 +213,7 @@ public class StaffService {
         vo.setProbationEndDate(s.getProbationEndDate());
         vo.setHasCaregiverCert(s.getHasCaregiverCert());
         vo.setHasHealthCert(s.getHasHealthCert());
+        vo.setPositionType(s.getPositionType());
         vo.setElderlyCount(elderlyCount == null ? 0 : elderlyCount);
         vo.setCreateTime(s.getCreateTime());
         return vo;

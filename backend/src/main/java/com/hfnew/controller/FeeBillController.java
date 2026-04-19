@@ -30,13 +30,13 @@ public class FeeBillController {
     }
 
     @PostMapping("/generate")
-    @OpLog(module = "缴费管理", operation = "生成月账单草稿")
+    @OpLog(module = "收支管理", operation = "生成月账单草稿")
     public ResponseEntity<ApiResponse<Integer>> generate(@RequestParam(required = false) String billMonth) {
         return ResponseEntity.ok(ApiResponse.success(feeBillService.generateDraft(billMonth)));
     }
 
     @PutMapping("/{id}/confirm")
-    @OpLog(module = "缴费管理", operation = "确认月结算")
+    @OpLog(module = "收支管理", operation = "确认月结算")
     public ResponseEntity<ApiResponse<Object>> confirm(@PathVariable Long id) {
         feeBillService.confirm(id);
         return ResponseEntity.ok(ApiResponse.success());

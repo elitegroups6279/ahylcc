@@ -26,14 +26,18 @@ public class StaffController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String positionType
     ) {
-        return ResponseEntity.ok(ApiResponse.success(staffService.list(page, pageSize, keyword, status)));
+        return ResponseEntity.ok(ApiResponse.success(staffService.list(page, pageSize, keyword, status, positionType)));
     }
 
     @GetMapping("/options")
-    public ResponseEntity<ApiResponse<List<StaffOption>>> options(@RequestParam(required = false) String keyword) {
-        return ResponseEntity.ok(ApiResponse.success(staffService.options(keyword)));
+    public ResponseEntity<ApiResponse<List<StaffOption>>> options(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String positionType
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(staffService.options(keyword, positionType)));
     }
 
     @GetMapping("/by-ids")

@@ -13,4 +13,6 @@ public class PaymentCreateRequest {
     private String voucherUrl;
     private String receiptNo;
     private String remark;
+    private String incomeType;
+    private String description;
 }

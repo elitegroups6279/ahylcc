@@ -72,13 +72,18 @@ public class PaymentService {
 
     @Transactional
     public Long create(Long operatorId, PaymentCreateRequest request) {
-        if (request.getElderlyId() == null) {
-            throw new BizException(400, 400, "请选择老人");
-        }
         if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BizException(400, 400, "金额必须大于0");
         }
-        ensureElderlyExists(request.getElderlyId());
+
+        // ELDERLY_FEE 类型时，elderlyId 必填并验证老人；其他类型跳过
+        boolean isElderlyFee = "ELDERLY_FEE".equals(request.getIncomeType());
+        if (isElderlyFee && request.getElderlyId() == null) {
+            throw new BizException(400, 400, "养老费用请选择老人");
+        }
+        if (request.getElderlyId() != null) {
+            ensureElderlyExists(request.getElderlyId());
+        }
 
         PaymentRecord record = new PaymentRecord();
         record.setElderlyId(request.getElderlyId());
@@ -89,15 +94,20 @@ public class PaymentService {
         record.setReceiptNo(request.getReceiptNo());
         record.setOperatorId(operatorId);
         record.setRemark(request.getRemark());
+        record.setIncomeType(request.getIncomeType());
+        record.setDescription(request.getDescription());
         paymentRecordMapper.insert(record);
 
-        FeeAccount account = getOrCreateFeeAccount(request.getElderlyId());
-        BigDecimal balance = account.getBalance() == null ? BigDecimal.ZERO : account.getBalance();
-        BigDecimal totalCharged = account.getTotalCharged() == null ? BigDecimal.ZERO : account.getTotalCharged();
-        account.setBalance(balance.add(request.getAmount()));
-        account.setTotalCharged(totalCharged.add(request.getAmount()));
-        account.setWarningStatus(calcWarningStatus(request.getElderlyId(), account.getBalance()));
-        feeAccountMapper.updateById(account);
+        // 仅当 elderlyId 有值时才更新老人费用账户
+        if (request.getElderlyId() != null) {
+            FeeAccount account = getOrCreateFeeAccount(request.getElderlyId());
+            BigDecimal balance = account.getBalance() == null ? BigDecimal.ZERO : account.getBalance();
+            BigDecimal totalCharged = account.getTotalCharged() == null ? BigDecimal.ZERO : account.getTotalCharged();
+            account.setBalance(balance.add(request.getAmount()));
+            account.setTotalCharged(totalCharged.add(request.getAmount()));
+            account.setWarningStatus(calcWarningStatus(request.getElderlyId(), account.getBalance()));
+            feeAccountMapper.updateById(account);
+        }
 
         return record.getId();
     }
@@ -181,6 +191,8 @@ public class PaymentService {
         vo.setReceiptNo(r.getReceiptNo());
         vo.setOperatorId(r.getOperatorId());
         vo.setRemark(r.getRemark());
+        vo.setIncomeType(r.getIncomeType());
+        vo.setDescription(r.getDescription());
         vo.setCreateTime(r.getCreateTime());
         return vo;
     }

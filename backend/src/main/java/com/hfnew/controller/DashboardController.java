@@ -5,16 +5,24 @@ import com.hfnew.common.ApiResponse;
 import com.hfnew.dto.dashboard.CalendarDayEventsDTO;
 import com.hfnew.dto.dashboard.CalendarEventItemDTO;
 import com.hfnew.dto.notify.FeeWarningItem;
+import com.hfnew.entity.Bed;
+import com.hfnew.entity.DrugBatch;
 import com.hfnew.entity.Elderly;
 import com.hfnew.entity.ElderlyLeave;
+import com.hfnew.entity.ExpenseRecord;
 import com.hfnew.entity.PaymentRecord;
 import com.hfnew.entity.Reimbursement;
 import com.hfnew.entity.Staff;
+import com.hfnew.entity.VoucherHeader;
+import com.hfnew.mapper.BedMapper;
+import com.hfnew.mapper.DrugBatchMapper;
 import com.hfnew.mapper.ElderlyLeaveMapper;
 import com.hfnew.mapper.ElderlyMapper;
+import com.hfnew.mapper.ExpenseRecordMapper;
 import com.hfnew.mapper.PaymentRecordMapper;
 import com.hfnew.mapper.ReimbursementMapper;
 import com.hfnew.mapper.StaffMapper;
+import com.hfnew.mapper.VoucherHeaderMapper;
 import com.hfnew.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +53,10 @@ public class DashboardController {
     private final PaymentRecordMapper paymentRecordMapper;
     private final ReimbursementMapper reimbursementMapper;
     private final ElderlyLeaveMapper elderlyLeaveMapper;
+    private final ExpenseRecordMapper expenseRecordMapper;
+    private final BedMapper bedMapper;
+    private final VoucherHeaderMapper voucherHeaderMapper;
+    private final DrugBatchMapper drugBatchMapper;
 
     @GetMapping("/fee-warnings")
     public ResponseEntity<ApiResponse<List<FeeWarningItem>>> feeWarnings() {
@@ -84,7 +96,60 @@ public class DashboardController {
         long pendingTasks = reimbursementMapper.selectCount(reimbursementWrapper);
         stats.put("pendingTasks", pendingTasks);
 
+        // 本月支出总额（从t_expense_record按expense_date在当月范围内的amount求和）
+        LocalDate startOfMonthDate = LocalDate.now().withDayOfMonth(1);
+        LocalDate endOfMonthDate = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
+        LambdaQueryWrapper<ExpenseRecord> expenseWrapper = new LambdaQueryWrapper<>();
+        expenseWrapper.ge(ExpenseRecord::getExpenseDate, startOfMonthDate)
+                .le(ExpenseRecord::getExpenseDate, endOfMonthDate);
+        List<ExpenseRecord> expenses = expenseRecordMapper.selectList(expenseWrapper);
+        BigDecimal monthlyExpense = expenses.stream()
+                .map(ExpenseRecord::getAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        stats.put("monthlyExpense", monthlyExpense);
+
+        // 床位使用率（占用数/总数×100，保留1位小数）
+        long totalBeds = bedMapper.selectCount(new LambdaQueryWrapper<>());
+        LambdaQueryWrapper<Bed> occupiedBedWrapper = new LambdaQueryWrapper<>();
+        occupiedBedWrapper.eq(Bed::getStatus, 1); // 1表示占用
+        long occupiedBeds = bedMapper.selectCount(occupiedBedWrapper);
+        double bedUsageRate = totalBeds > 0 ? Math.round((double) occupiedBeds * 1000 / totalBeds) / 10.0 : 0.0;
+        stats.put("bedUsageRate", bedUsageRate);
+        stats.put("totalBeds", totalBeds);
+        stats.put("occupiedBeds", occupiedBeds);
+
         return ResponseEntity.ok(ApiResponse.success(stats));
+    }
+
+    @GetMapping("/pending-summary")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> pendingSummary() {
+        Map<String, Object> result = new HashMap<>();
+
+        // 费用预警人数
+        result.put("feeWarningCount", notificationService.listFeeWarnings().size());
+
+        // 待审报账数（status='PENDING'）
+        LambdaQueryWrapper<Reimbursement> reimbursementWrapper = new LambdaQueryWrapper<>();
+        reimbursementWrapper.eq(Reimbursement::getStatus, "PENDING");
+        long pendingReimbursementCount = reimbursementMapper.selectCount(reimbursementWrapper);
+        result.put("pendingReimbursementCount", pendingReimbursementCount);
+
+        // 待审凭证数（status='SUBMITTED'）
+        LambdaQueryWrapper<VoucherHeader> voucherWrapper = new LambdaQueryWrapper<>();
+        voucherWrapper.eq(VoucherHeader::getStatus, "SUBMITTED");
+        long pendingVoucherCount = voucherHeaderMapper.selectCount(voucherWrapper);
+        result.put("pendingVoucherCount", pendingVoucherCount);
+
+        // 药品效期预警（expiryDate <= 30天后 且 quantity > 0）
+        LocalDate warningDate = LocalDate.now().plusDays(30);
+        LambdaQueryWrapper<DrugBatch> drugBatchWrapper = new LambdaQueryWrapper<>();
+        drugBatchWrapper.le(DrugBatch::getExpiryDate, warningDate)
+                .gt(DrugBatch::getQuantity, 0);
+        long drugExpiryWarningCount = drugBatchMapper.selectCount(drugBatchWrapper);
+        result.put("drugExpiryWarningCount", drugExpiryWarningCount);
+
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/calendar-events")

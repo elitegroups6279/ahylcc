@@ -58,11 +58,12 @@ MERGE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, s
 MERGE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission) KEY(id) VALUES
 (31, 3, '护工管理', 1, '/staff/list', 'pages/staff/StaffList', NULL, 1, 'staff:list'),
 (32, 3, '打卡记录', 1, '/staff/attendance', 'pages/staff/Attendance', NULL, 2, 'staff:attendance'),
-(33, 3, '排班管理', 1, '/staff/schedule', 'pages/staff/Schedule', NULL, 3, 'staff:schedule');
+(33, 3, '排班管理', 1, '/staff/schedule', 'pages/staff/Schedule', NULL, 3, 'staff:schedule'),
+(34, 3, '员工管理', 1, '/staff/employee', 'pages/staff/EmployeeList', NULL, 4, 'staff:employee');
 
 -- 财务管理子菜单
 MERGE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission) KEY(id) VALUES
-(41, 4, '缴费管理', 1, '/finance/payment', 'pages/finance/Payment', NULL, 1, 'finance:payment'),
+(41, 4, '收支管理', 1, '/finance/payment', 'pages/finance/Payment', NULL, 1, 'finance:cashflow'),
 (42, 4, '凭证管理', 1, '/finance/voucher', 'pages/finance/Voucher', NULL, 2, 'finance:voucher'),
 (43, 4, '报账管理', 1, '/finance/reimbursement', 'pages/finance/Reimbursement', NULL, 3, 'finance:reimbursement'),
 (44, 4, '月度账单', 1, '/finance/bills', 'pages/finance/FeeBill', NULL, 4, 'finance:bill'),
@@ -104,6 +105,15 @@ MERGE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, s
 -- ========================================
 DELETE FROM t_role_menu WHERE role_id = 1;
 INSERT INTO t_role_menu (role_id, menu_id) SELECT 1, id FROM t_menu;
+
+-- ========================================
+-- 人事专员(HR)角色菜单权限
+-- ========================================
+MERGE INTO t_role_menu (id, role_id, menu_id) KEY(id) VALUES
+(301, 4, 31),
+(302, 4, 32),
+(303, 4, 33),
+(304, 4, 34);
 
 -- ========================================
 -- 上门服务专员角色菜单权限

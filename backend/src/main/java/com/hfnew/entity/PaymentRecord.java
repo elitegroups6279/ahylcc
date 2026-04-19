@@ -34,6 +34,10 @@ public class PaymentRecord {
 
     private String remark;
 
+    private String incomeType;
+
+    private String description;
+
     @TableLogic
     private Integer deleted;
 

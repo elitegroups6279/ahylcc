@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS t_staff (
   probation_end_date DATE COMMENT '实习到期日期',
   has_caregiver_cert TINYINT DEFAULT 0 COMMENT '是否有护工证：0=无，1=有',
   has_health_cert TINYINT DEFAULT 0 COMMENT '是否有健康证：0=无，1=有',
+  position_type VARCHAR(20) DEFAULT 'CAREGIVER',
   status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE在职/RESIGNED离职',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -260,10 +261,12 @@ CREATE TABLE IF NOT EXISTS t_fee_bill (
 -- t_payment_record: 缴费记录
 CREATE TABLE IF NOT EXISTS t_payment_record (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  elderly_id BIGINT NOT NULL,
+  elderly_id BIGINT COMMENT '老人ID(养老费用时必填)',
   amount DECIMAL(10,2) NOT NULL,
   payment_method VARCHAR(30) COMMENT 'CASH/TRANSFER/POS',
   source_type VARCHAR(30) COMMENT 'LONG_CARE长护险/COUPON消费券/OTHER其他',
+  income_type VARCHAR(30) COMMENT '收入类型：ELDERLY_FEE/SUBSIDY/DONATION/RENTAL/OTHER',
+  description VARCHAR(500) COMMENT '收入说明',
   voucher_url VARCHAR(500) COMMENT '凭证图片URL',
   receipt_no VARCHAR(50),
   operator_id BIGINT COMMENT '操作员ID',
@@ -682,6 +685,21 @@ CREATE TABLE IF NOT EXISTS t_service_assessment (
   org_signature_url VARCHAR(500),
   status VARCHAR(20) DEFAULT 'DRAFT',
   creator_id BIGINT,
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 支出记录表 ==========
+CREATE TABLE IF NOT EXISTS t_expense_record (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  expense_type VARCHAR(30) NOT NULL COMMENT 'FOOD/MEDICAL/MAINTENANCE/SALARY/UTILITY/PURCHASE/OTHER',
+  amount DECIMAL(12,2) NOT NULL,
+  expense_date DATE NOT NULL,
+  payee VARCHAR(100) COMMENT '收款方',
+  description VARCHAR(500),
+  operator_id BIGINT,
+  remark VARCHAR(200),
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP

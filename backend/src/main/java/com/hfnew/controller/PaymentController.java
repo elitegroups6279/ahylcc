@@ -37,7 +37,7 @@ public class PaymentController {
     }
 
     @PostMapping("/api/finance/payments")
-    @OpLog(module = "缴费管理", operation = "登记缴费")
+    @OpLog(module = "收支管理", operation = "登记缴费")
     public ResponseEntity<ApiResponse<Long>> create(@RequestBody PaymentCreateRequest request) {
         Long id = paymentService.create(getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.success(id));

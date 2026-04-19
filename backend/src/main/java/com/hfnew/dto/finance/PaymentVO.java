@@ -17,5 +17,7 @@ public class PaymentVO {
     private String receiptNo;
     private Long operatorId;
     private String remark;
+    private String incomeType;
+    private String description;
     private LocalDateTime createTime;
 }

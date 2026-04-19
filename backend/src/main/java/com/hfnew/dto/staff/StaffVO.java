@@ -25,6 +25,7 @@ public class StaffVO {
     private LocalDate probationEndDate;
     private Integer hasCaregiverCert;
     private Integer hasHealthCert;
+    private String positionType;
     private Integer elderlyCount;
     private LocalDateTime createTime;
 }

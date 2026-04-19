@@ -59,6 +59,8 @@ public class Staff {
 
     private Integer hasHealthCert;
 
+    private String positionType;
+
     private String status;
 
     @TableLogic

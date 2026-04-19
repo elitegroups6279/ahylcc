@@ -65,6 +65,12 @@ const routes = [
         meta: { title: '护工管理', permission: 'staff:list', parent: '人事管理', requiresAuth: true }
       },
       {
+        path: 'staff/employee',
+        name: 'EmployeeList',
+        component: () => import('../pages/staff/EmployeeList.vue'),
+        meta: { title: '员工管理', permission: 'staff:employee', parent: '人事管理', requiresAuth: true }
+      },
+      {
         path: 'staff/attendance',
         name: 'Attendance',
         component: () => import('../pages/staff/Attendance.vue'),
@@ -81,7 +87,7 @@ const routes = [
         path: 'finance/payment',
         name: 'Payment',
         component: () => import('../pages/finance/Payment.vue'),
-        meta: { title: '缴费管理', permission: 'finance:payment', parent: '财务管理', requiresAuth: true }
+        meta: { title: '收支管理', permission: 'finance:cashflow', parent: '财务管理', requiresAuth: true }
       },
       {
         path: 'finance/voucher',

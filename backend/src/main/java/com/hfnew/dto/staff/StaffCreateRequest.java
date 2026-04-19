@@ -20,4 +20,5 @@ public class StaffCreateRequest {
     private Integer probationMonths;
     private Integer hasCaregiverCert;
     private Integer hasHealthCert;
+    private String positionType;
 }

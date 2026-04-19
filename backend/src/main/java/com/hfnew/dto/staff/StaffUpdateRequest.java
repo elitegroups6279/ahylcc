@@ -22,4 +22,5 @@ public class StaffUpdateRequest {
     private Integer probationMonths;
     private Integer hasCaregiverCert;
     private Integer hasHealthCert;
+    private String positionType;
 }

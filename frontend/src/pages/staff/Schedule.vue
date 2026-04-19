@@ -57,7 +57,10 @@
           </thead>
           <tbody>
             <tr v-for="row in weekData" :key="row.staffId">
-              <td class="staff-name">{{ row.staffName }}</td>
+              <td class="staff-name">
+                {{ row.staffName }}
+                <el-tag v-if="row.positionType && positionTagMap[row.positionType]" :color="positionTagMap[row.positionType].color" style="color: #fff; border: none; margin-left: 4px;" size="small">{{ positionTagMap[row.positionType].shortLabel }}</el-tag>
+              </td>
               <td v-for="day in weekDays" :key="day.date" :class="{ today: day.isToday }">
                 <div class="shift-cell" @click="openQuickEdit(row, day)">
                   <el-tag v-if="getShift(row, day.date)" :type="getShiftType(getShift(row, day.date))">
@@ -86,7 +89,7 @@
           style="width: 200px"
           @change="reloadList"
         >
-          <el-option v-for="s in staffOptions" :key="s.id" :label="s.name" :value="s.id" />
+          <el-option v-for="s in staffOptions" :key="s.id" :label="s.name + (s.positionType && positionTagMap[s.positionType] ? ' [' + positionTagMap[s.positionType].shortLabel + ']' : '')" :value="s.id" />
         </el-select>
         <el-select v-model="listFilter.shiftType" clearable placeholder="班次" style="width: 140px" @change="reloadList">
           <el-option label="早班" value="MORNING" />
@@ -175,7 +178,7 @@
             placeholder="请选择护工（可多选）"
             style="width: 100%"
           >
-            <el-option v-for="s in allStaffOptions" :key="s.id" :label="s.name" :value="s.id" />
+            <el-option v-for="s in allStaffOptions" :key="s.id" :label="s.name + (s.positionType && positionTagMap[s.positionType] ? ' [' + positionTagMap[s.positionType].shortLabel + ']' : '')" :value="s.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="日期范围" prop="dateRange">
@@ -228,7 +231,7 @@
             placeholder="请选择护工"
             style="width: 100%"
           >
-            <el-option v-for="s in staffOptions" :key="s.id" :label="s.name" :value="s.id" />
+            <el-option v-for="s in staffOptions" :key="s.id" :label="s.name + (s.positionType && positionTagMap[s.positionType] ? ' [' + positionTagMap[s.positionType].shortLabel + ']' : '')" :value="s.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="日期" prop="scheduleDate">
@@ -258,6 +261,16 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowRight, Plus, Refresh } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
+
+// 岗位类型标签映射
+const positionTagMap = {
+  CAREGIVER: { label: '护工', shortLabel: '护工', color: '#8B5CF6' },
+  MANAGER: { label: '管理人员', shortLabel: '管理', color: '#409EFF' },
+  FINANCE: { label: '财务人员', shortLabel: '财务', color: '#E6A23C' },
+  HR: { label: '人事专员', shortLabel: '人事', color: '#67C23A' },
+  LOGISTICS: { label: '后勤人员', shortLabel: '后勤', color: '#909399' },
+  OTHER: { label: '其他', shortLabel: '其他', color: '#F56C6C' }
+}
 
 // ============ 周视图相关 ============
 const weekStart = ref(null)
@@ -782,6 +795,7 @@ onMounted(() => {
   font-weight: 500;
   color: #303133;
   background-color: #fafafa;
+  white-space: nowrap;
 }
 
 .day-header {

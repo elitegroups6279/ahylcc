@@ -39,8 +39,9 @@ const fallbackMenus = [
     orderNum: 2,
     children: [
       { id: 31, menuName: '护工管理', path: '/staff/list', icon: 'UserFilled', menuType: 'M', orderNum: 1 },
-      { id: 32, menuName: '打卡记录', path: '/staff/attendance', icon: 'Clock', menuType: 'M', orderNum: 2 },
-      { id: 33, menuName: '排班管理', path: '/staff/schedule', icon: 'Calendar', menuType: 'M', orderNum: 3 }
+      { id: 34, menuName: '员工管理', path: '/staff/employee', icon: 'User', menuType: 'M', orderNum: 2 },
+      { id: 32, menuName: '打卡记录', path: '/staff/attendance', icon: 'Clock', menuType: 'M', orderNum: 3 },
+      { id: 33, menuName: '排班管理', path: '/staff/schedule', icon: 'Calendar', menuType: 'M', orderNum: 4 }
     ]
   },
   {
@@ -51,7 +52,7 @@ const fallbackMenus = [
     menuType: 'C',
     orderNum: 3,
     children: [
-      { id: 41, menuName: '缴费管理', path: '/finance/payment', icon: 'Wallet', menuType: 'M', orderNum: 1 },
+      { id: 41, menuName: '收支管理', path: '/finance/payment', icon: 'Wallet', menuType: 'M', orderNum: 1 },
       { id: 42, menuName: '凭证管理', path: '/finance/voucher', icon: 'Document', menuType: 'M', orderNum: 2 },
       { id: 43, menuName: '报账管理', path: '/finance/reimbursement', icon: 'Tickets', menuType: 'M', orderNum: 3 },
       { id: 44, menuName: '月度账单', path: '/finance/bills', icon: 'Notebook', menuType: 'M', orderNum: 4 },
