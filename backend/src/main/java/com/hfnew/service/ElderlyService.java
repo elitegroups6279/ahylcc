@@ -9,6 +9,7 @@ import com.hfnew.entity.*;
 import com.hfnew.exception.BizException;
 import com.hfnew.mapper.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ElderlyService {
 
     private final ElderlyMapper elderlyMapper;
@@ -164,9 +166,14 @@ public class ElderlyService {
         elderlyMapper.updateById(e);
 
         // 释放床位（条件更新防并发）
-        int freed = jdbcTemplate.update(
-            "UPDATE t_bed SET status = 0 WHERE id = ? AND status = 1", e.getBedId());
-        if (freed == 0) throw new BizException(409, 409, "床位状态异常，请刷新重试");
+        if (e.getBedId() != null) {
+            int freed = jdbcTemplate.update(
+                "UPDATE t_bed SET status = 0 WHERE id = ? AND status = 1", e.getBedId());
+            // Log if bed wasn't freed, but don't block discharge
+            if (freed == 0) {
+                log.warn("床位释放未影响行: bedId={}, elderlyId={}", e.getBedId(), id);
+            }
+        }
         endAssignmentsByElderlyId(id);
     }
 

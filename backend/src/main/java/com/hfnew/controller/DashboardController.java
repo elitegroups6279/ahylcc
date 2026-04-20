@@ -212,4 +212,62 @@ public class DashboardController {
 
         return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    @GetMapping("/charts")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getCharts() {
+        Map<String, Object> charts = new HashMap<>();
+
+        // 1. Revenue trend - last 6 months payment totals
+        List<Map<String, Object>> revenueTrend = new ArrayList<>();
+        YearMonth current = YearMonth.now();
+        for (int i = 5; i >= 0; i--) {
+            YearMonth ym = current.minusMonths(i);
+            LocalDateTime start = ym.atDay(1).atStartOfDay();
+            LocalDateTime end = ym.atEndOfMonth().atTime(LocalTime.MAX);
+            LambdaQueryWrapper<PaymentRecord> pw = new LambdaQueryWrapper<>();
+            pw.ge(PaymentRecord::getCreateTime, start).le(PaymentRecord::getCreateTime, end);
+            List<PaymentRecord> monthPayments = paymentRecordMapper.selectList(pw);
+            BigDecimal total = monthPayments.stream()
+                    .map(PaymentRecord::getAmount)
+                    .filter(a -> a != null)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            Map<String, Object> point = new HashMap<>();
+            point.put("month", ym.toString());
+            point.put("amount", total);
+            revenueTrend.add(point);
+        }
+        charts.put("revenueTrend", revenueTrend);
+
+        // 2. Care level distribution - count active elderly by disability_level
+        List<Map<String, Object>> careLevelDist = new ArrayList<>();
+        String[] levels = {"NONE", "MODERATE", "SEVERE"};
+        for (String level : levels) {
+            LambdaQueryWrapper<Elderly> ew = new LambdaQueryWrapper<>();
+            ew.in(Elderly::getStatus, "ACTIVE", "ON_LEAVE")
+              .eq(Elderly::getDisabilityLevel, level);
+            long count = elderlyMapper.selectCount(ew);
+            Map<String, Object> item = new HashMap<>();
+            item.put("level", level);
+            item.put("count", count);
+            careLevelDist.add(item);
+        }
+        charts.put("careLevelDistribution", careLevelDist);
+
+        // 3. Category distribution - count active elderly by category
+        List<Map<String, Object>> categoryDist = new ArrayList<>();
+        String[] categories = {"SOCIAL", "WU_BAO", "LOW_BAO"};
+        for (String cat : categories) {
+            LambdaQueryWrapper<Elderly> ew = new LambdaQueryWrapper<>();
+            ew.in(Elderly::getStatus, "ACTIVE", "ON_LEAVE")
+              .eq(Elderly::getCategory, cat);
+            long count = elderlyMapper.selectCount(ew);
+            Map<String, Object> item = new HashMap<>();
+            item.put("category", cat);
+            item.put("count", count);
+            categoryDist.add(item);
+        }
+        charts.put("categoryDistribution", categoryDist);
+
+        return ResponseEntity.ok(ApiResponse.success(charts));
+    }
 }

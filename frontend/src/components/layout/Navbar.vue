@@ -21,6 +21,7 @@
             <el-dropdown-item disabled>待处理汇总：{{ notifyCount }}</el-dropdown-item>
             <el-dropdown-item v-if="summary" disabled>
               报账待审批：{{ summary.pendingReimbursementCount || 0 }}
+              ｜余额预警：{{ summary.feeWarningCount || 0 }}
               ｜库存预警：{{ summary.stockWarningCount || 0 }}
               ｜近效期：{{ summary.drugExpiryWarningCount || 0 }}
               ｜合同到期：{{ summary.contractExpiringCount || 0 }}
@@ -119,6 +120,7 @@ async function fetchNotifySummary() {
       const s = summary.value || {}
       notifyCount.value =
         (s.pendingReimbursementCount || 0) +
+        (s.feeWarningCount || 0) +
         (s.stockWarningCount || 0) +
         (s.drugExpiryWarningCount || 0) +
         (s.contractExpiringCount || 0)

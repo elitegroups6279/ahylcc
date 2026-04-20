@@ -30,7 +30,7 @@ app:
     issuer: "hfnew-backend"
 
   security:
-    allowed-origins: "http://localhost:5173,http://www.ahylcc.cn,https://www.ahylcc.cn"
+    allowed-origins: "http://localhost:5173,http://www.ahylcc.cn,https://www.ahylcc.cn,http://ahylcc.cn,https://ahylcc.cn,http://43.138.7.82,https://43.138.7.82"
 
 ---
 spring:
@@ -67,4 +67,3 @@ spring:
       mode: always
       schema-locations: classpath:schema.sql
       data-locations: classpath:data-h2.sql
-

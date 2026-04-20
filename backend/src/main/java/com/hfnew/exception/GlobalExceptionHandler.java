@@ -1,6 +1,7 @@
 package com.hfnew.exception;
 
 import com.hfnew.common.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -29,9 +31,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnknown(Exception ex) {
-        // 生产环境建议记录日志 traceId，并对外返回固定提示
-        ApiResponse<Object> resp = ApiResponse.fail(500, "internal error");
+        log.error("Unhandled exception: ", ex);
+        String msg = ex.getMessage() != null ? ex.getMessage() : "internal error";
+        ApiResponse<Object> resp = ApiResponse.fail(500, msg);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp);
     }
 }
-

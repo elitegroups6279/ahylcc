@@ -8,7 +8,7 @@
 -- 密码: Admin123! (BCrypt加密)
 -- ========================================
 INSERT INTO t_user (id, username, password, real_name, status)
-VALUES (1, 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '超级管理员', 1)
+VALUES (1, 'admin', '$2a$10$9KVgdbkr.8b6joLYrPGHk.LdenJvau80Kjm1.pA1lRhUTNzfgLGRe', '超级管理员', 1)
 ON DUPLICATE KEY UPDATE
   username = VALUES(username),
   password = VALUES(password),
@@ -90,8 +90,7 @@ INSERT INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, 
 VALUES
   (31, 3, '护工管理', 1, '/staff/list', 'pages/staff/StaffList', NULL, 1, 'staff:list'),
   (32, 3, '打卡记录', 1, '/staff/attendance', 'pages/staff/Attendance', NULL, 2, 'staff:attendance'),
-  (33, 3, '排班管理', 1, '/staff/schedule', 'pages/staff/Schedule', NULL, 3, 'staff:schedule'),
-  (34, 3, '员工管理', 1, '/staff/employee', 'pages/staff/EmployeeList', NULL, 4, 'staff:employee')
+  (33, 3, '排班管理', 1, '/staff/schedule', 'pages/staff/Schedule', NULL, 3, 'staff:schedule')
 ON DUPLICATE KEY UPDATE
   parent_id = VALUES(parent_id),
   menu_name = VALUES(menu_name),
@@ -105,7 +104,7 @@ ON DUPLICATE KEY UPDATE
 -- 财务管理子菜单
 INSERT INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission)
 VALUES
-  (41, 4, '收支管理', 1, '/finance/payment', 'pages/finance/Payment', NULL, 1, 'finance:cashflow'),
+  (41, 4, '缴费管理', 1, '/finance/payment', 'pages/finance/Payment', NULL, 1, 'finance:payment'),
   (42, 4, '凭证管理', 1, '/finance/voucher', 'pages/finance/Voucher', NULL, 2, 'finance:voucher'),
   (43, 4, '报账管理', 1, '/finance/reimbursement', 'pages/finance/Reimbursement', NULL, 3, 'finance:reimbursement'),
   (44, 4, '月度账单', 1, '/finance/bills', 'pages/finance/FeeBill', NULL, 4, 'finance:bill'),
@@ -171,8 +170,7 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission)
 VALUES
   (71, 7, '预约管理', 1, '/home-service/orders', 'pages/home-service/Orders', NULL, 1, 'home-service:orders'),
-  (72, 7, '服务记录', 1, '/home-service/records', 'pages/home-service/Records', NULL, 2, 'home-service:records'),
-  (73, 7, '服务评估', 1, '/home-service/assessment', 'pages/home-service/Assessment', NULL, 3, 'home-service:assessment')
+  (72, 7, '服务记录', 1, '/home-service/records', 'pages/home-service/Records', NULL, 2, 'home-service:records')
 ON DUPLICATE KEY UPDATE
   parent_id = VALUES(parent_id),
   menu_name = VALUES(menu_name),
@@ -206,25 +204,6 @@ ON DUPLICATE KEY UPDATE
 -- ========================================
 INSERT INTO t_role_menu (role_id, menu_id)
 SELECT 1, id FROM t_menu
-ON DUPLICATE KEY UPDATE menu_id = VALUES(menu_id);
-
--- ========================================
--- 人事专员(HR)角色菜单权限
--- ========================================
-INSERT INTO t_role_menu (role_id, menu_id) VALUES
-(4, 31),
-(4, 32),
-(4, 33),
-(4, 34)
-ON DUPLICATE KEY UPDATE menu_id = VALUES(menu_id);
-
--- ========================================
--- 上门服务专员角色菜单权限
--- ========================================
-INSERT INTO t_role_menu (role_id, menu_id) VALUES
-(9, 71),
-(9, 72),
-(9, 73)
 ON DUPLICATE KEY UPDATE menu_id = VALUES(menu_id);
 
 -- ========================================
@@ -304,83 +283,4 @@ ON DUPLICATE KEY UPDATE
   applicant_id = VALUES(applicant_id),
   amount = VALUES(amount),
   reason = VALUES(reason),
-  status = VALUES(status);
-
--- ========================================
--- 会计科目初始数据
--- ========================================
-INSERT INTO t_accounting_subject (code, name, subject_type, direction, enabled, sort_order) VALUES
-('1001', '库存现金', 'ASSET', 'DEBIT', 1, 1),
-('1002', '银行存款', 'ASSET', 'DEBIT', 1, 2),
-('1009', '其他货币资金', 'ASSET', 'DEBIT', 1, 3),
-('1122', '应收账款', 'ASSET', 'DEBIT', 1, 4),
-('1221', '其他应收款', 'ASSET', 'DEBIT', 1, 5),
-('1401', '材料物资', 'ASSET', 'DEBIT', 1, 6),
-('1501', '固定资产', 'ASSET', 'DEBIT', 1, 7),
-('1502', '累计折旧', 'ASSET', 'CREDIT', 1, 8),
-('2001', '应付账款', 'LIABILITY', 'CREDIT', 1, 9),
-('2211', '应付职工薪酬', 'LIABILITY', 'CREDIT', 1, 10),
-('2221', '应交税费', 'LIABILITY', 'CREDIT', 1, 11),
-('2241', '其他应付款', 'LIABILITY', 'CREDIT', 1, 12),
-('2501', '预收账款', 'LIABILITY', 'CREDIT', 1, 13),
-('5001', '床位费收入', 'INCOME', 'CREDIT', 1, 14),
-('5002', '护理费收入', 'INCOME', 'CREDIT', 1, 15),
-('5003', '伙食费收入', 'INCOME', 'CREDIT', 1, 16),
-('5004', '医疗服务收入', 'INCOME', 'CREDIT', 1, 17),
-('5005', '政府补贴收入', 'INCOME', 'CREDIT', 1, 18),
-('5006', '居家服务收入', 'INCOME', 'CREDIT', 1, 19),
-('5099', '其他收入', 'INCOME', 'CREDIT', 1, 20),
-('6001', '职工薪酬', 'EXPENSE', 'DEBIT', 1, 21),
-('6002', '伙食成本', 'EXPENSE', 'DEBIT', 1, 22),
-('6003', '医药成本', 'EXPENSE', 'DEBIT', 1, 23),
-('6004', '水电费', 'EXPENSE', 'DEBIT', 1, 24),
-('6005', '物资消耗', 'EXPENSE', 'DEBIT', 1, 25),
-('6006', '设备维护费', 'EXPENSE', 'DEBIT', 1, 26),
-('6007', '折旧费用', 'EXPENSE', 'DEBIT', 1, 27),
-('6099', '其他费用', 'EXPENSE', 'DEBIT', 1, 28);
-
--- ========== 服务项目(国标 GB/T 43153-2023) ==========
-INSERT INTO t_service_item (name, category, price, unit, description, status) VALUES
--- 生活照料服务(6项)
-('助餐服务', '生活照料', 30.00, '次', '协助订餐、上门送餐、上门烹任等', 1),
-('助浴服务', '生活照料', 50.00, '次', '上门助浴、协助前往助浴点进行身体清洁', 1),
-('助洁服务', '生活照料', 40.00, '次', '洗漱、理发、剃须、身体助洁、居家清洁、衣物洗涤、物品整理等', 1),
-('助行服务', '生活照料', 35.00, '次', '协助行走、陪同外出等', 1),
-('助医服务', '生活照料', 60.00, '次', '陪同就医、治疗陪伴等', 1),
-('助急服务', '生活照料', 0.00, '次', '紧急呼叫受理、紧急转介等', 1),
--- 基础照护服务(5项)
-('生活照护', '基础照护', 50.00, '小时', '协助穿脱衣、饮食照护、睡眠照护等', 1),
-('排泄护理', '基础照护', 50.00, '次', '排尿护理、排便护理、排气护理等', 1),
-('护理协助', '基础照护', 45.00, '次', '保暖和物理降温、翻身拍背、褥疮预防等', 1),
-('用药照护', '基础照护', 30.00, '次', '用药提醒、用药指导及不良反应观察等', 1),
-('康复护理', '基础照护', 80.00, '次', '康复评估、计划制定、康复训练指导、辅助器具使用等', 1),
--- 健康管理服务(4项)
-('健康信息采集', '健康管理', 30.00, '次', '体检信息、既往疾病史等健康信息采集，建立健康档案', 1),
-('健康监测', '健康管理', 25.00, '次', '体温、体重、血压、呼吸、心率、血糖等生理指数监测', 1),
-('健康咨询', '健康管理', 40.00, '次', '防跌倒、疾病预防、膳食营养、康复保健等指导', 1),
-('健康干预', '健康管理', 50.00, '次', '制定服务方案，生活起居、慢病调理等干预服务', 1),
--- 探访关爱服务(2项)
-('上门探访', '探访关爱', 20.00, '次', '了解健康状况、精神状况、安全情况、卫生状况、居住环境等', 1),
-('应急处置', '探访关爱', 0.00, '次', '接受与协助老年人的电话呼叫、紧急求助等', 1),
--- 精神慰藉服务(3项)
-('陪伴支持', '精神慰藉', 30.00, '小时', '定期协助老年人外出活动或参加集体活动等', 1),
-('情绪疏导', '精神慰藉', 40.00, '次', '与老年人进行谠心交流，耐心倾听老年人的诉说', 1),
-('心理慰藉', '精神慰藉', 60.00, '次', '心理健康教育、心理干预手段调整老年人心理状态', 1),
--- 委托代办服务(3项)
-('代购服务', '委托代办', 15.00, '次', '购买日常生活用品、订车票、预约车辆等', 1),
-('代办服务', '委托代办', 20.00, '次', '取送信函、文件和物品，申请法律援助、救助服务等', 1),
-('代缴服务', '委托代办', 10.00, '次', '缴纳水、电、气、通讯费等日常费用', 1),
--- 适老化改造服务(3项)
-('环境评估', '适老化改造', 100.00, '次', '评估老年人家庭生活环境和改造需求，确定改造方案', 1),
-('基础改造', '适老化改造', 500.00, '项', '防滑、防摔、防走失等物理环境改造及设备与用品配置', 1),
-('专项改造', '适老化改造', 1000.00, '项', '健康监测、安防报警、远程控制等智能家居产品配置安装', 1),
--- 其他个性化服务(2项)
-('个性化照护', '其他个性化', 0.00, '次', '根据老年人特殊需求定制的个性化服务', 1),
-('临时特殊服务', '其他个性化', 0.00, '次', '其他临时性、特殊性的养老服务需求', 1)
-ON DUPLICATE KEY UPDATE
-  name = VALUES(name),
-  category = VALUES(category),
-  price = VALUES(price),
-  unit = VALUES(unit),
-  description = VALUES(description),
   status = VALUES(status);
