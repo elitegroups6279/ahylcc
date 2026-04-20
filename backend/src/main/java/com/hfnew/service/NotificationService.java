@@ -37,6 +37,7 @@ public class NotificationService {
                 FROM t_elderly e
                 LEFT JOIN t_fee_account a ON a.elderly_id = e.id AND a.deleted = 0
                 WHERE e.deleted = 0 AND e.status = 'ACTIVE'
+                  AND e.category != 'WU_BAO'
                 """;
 
         YearMonth ym = YearMonth.now();

@@ -6,4 +6,6 @@ import lombok.Data;
 public class ElderlyOption {
     private Long id;
     private String name;
+    private String idCard;
+    private String uniqueNo;
 }

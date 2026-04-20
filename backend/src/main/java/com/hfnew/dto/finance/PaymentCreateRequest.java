@@ -3,6 +3,7 @@ package com.hfnew.dto.finance;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 public class PaymentCreateRequest {
@@ -15,4 +16,5 @@ public class PaymentCreateRequest {
     private String remark;
     private String incomeType;
     private String description;
+    private LocalDate paymentDate;
 }

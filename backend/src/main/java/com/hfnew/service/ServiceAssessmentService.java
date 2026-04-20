@@ -270,7 +270,7 @@ public class ServiceAssessmentService {
     private String generateAssessmentNo() {
         String prefix = "PA-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM")) + "-";
         Integer maxSeq = jdbcTemplate.queryForObject(
-                "SELECT MAX(CAST(SUBSTRING(assessment_no, ?) AS INTEGER)) FROM t_service_assessment WHERE assessment_no LIKE ? AND deleted = 0",
+                "SELECT MAX(CAST(SUBSTRING(assessment_no, ?) AS UNSIGNED)) FROM t_service_assessment WHERE assessment_no LIKE ? AND deleted = 0",
                 Integer.class,
                 prefix.length() + 1,
                 prefix + "%"

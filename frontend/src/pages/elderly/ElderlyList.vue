@@ -59,6 +59,7 @@
             <el-button link type="warning" @click="openLeaveDialog(row)" v-if="row.status === 'ACTIVE'">请假</el-button>
             <el-button link type="success" @click="handleReturn(row)" v-if="row.status === 'ON_LEAVE'">销假</el-button>
             <el-button link type="danger" @click="goDischarge(row)" v-if="row.status === 'ACTIVE' || row.status === 'ON_LEAVE'">退住</el-button>
+            <el-button link type="warning" size="small" @click="handleUndoDischarge(row)" v-if="row.status === 'DISCHARGED'">撤销退住</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -334,6 +335,23 @@ const handleReturn = async (row) => {
   } catch (e) {
     if (e !== 'cancel') {
       ElMessage.error(e.response?.data?.message || '销假失败')
+    }
+  }
+}
+
+const handleUndoDischarge = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      '确认撤销该老人的退住操作？撤销后需要手动重新分配床位。',
+      '撤销退住确认',
+      { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' }
+    )
+    await api.put(`/api/elderly/${row.id}/undo-discharge`)
+    ElMessage.success('撤销退住成功')
+    reload()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.response?.data?.message || e.response?.data?.msg || '撤销失败')
     }
   }
 }

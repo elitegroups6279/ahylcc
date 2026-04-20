@@ -4,6 +4,7 @@ import com.hfnew.common.ApiResponse;
 import com.hfnew.common.PageResult;
 import com.hfnew.config.OpLog;
 import com.hfnew.dto.elderly.*;
+import com.hfnew.entity.ElderlyChangeLog;
 import com.hfnew.entity.ElderlyLeave;
 import com.hfnew.security.AuthUserPrincipal;
 import com.hfnew.service.ElderlyLeaveService;
@@ -72,6 +73,13 @@ public class ElderlyController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    @PutMapping("/{id}/undo-discharge")
+    @OpLog(module = "入住管理", operation = "撤销退住")
+    public ResponseEntity<ApiResponse<Object>> undoDischarge(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        elderlyService.undoDischarge(id);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
     @PutMapping("/{id}/transfer")
     @OpLog(module = "入住管理", operation = "转床")
     public ResponseEntity<ApiResponse<Object>> transfer(@PathVariable Long id, @RequestBody ElderlyTransferRequest request) {
@@ -100,6 +108,11 @@ public class ElderlyController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> importElderly(@RequestParam("file") MultipartFile file) throws IOException {
         Map<String, Object> result = elderlyService.importFromExcel(file);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/{id}/changes")
+    public ResponseEntity<ApiResponse<List<ElderlyChangeLog>>> getChanges(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(elderlyService.getChangeLogs(id)));
     }
 
     // ==================== 请假管理 ====================

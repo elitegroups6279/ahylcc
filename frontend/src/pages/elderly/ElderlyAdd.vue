@@ -36,10 +36,11 @@
           <el-col :span="8">
             <el-form-item label="失能等级" prop="disabilityLevel">
               <el-select v-model="form.disabilityLevel" placeholder="请选择失能等级">
-                <el-option label="自理" value="SELF_CARE" />
+                <el-option label="能力完好" value="INTACT" />
                 <el-option label="轻度失能" value="MILD" />
                 <el-option label="中度失能" value="MODERATE" />
                 <el-option label="重度失能" value="SEVERE" />
+                <el-option label="完全失能" value="TOTAL" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -74,10 +75,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="床位" prop="bedId">
-              <el-select v-model="form.bedId" filterable placeholder="请选择床位" style="width: 100%">
-                <el-option v-for="b in bedOptions" :key="b.id" :label="bedLabel(b)" :value="b.id" />
-              </el-select>
+            <el-form-item label="床位">
+              <el-input v-model="form.customBedNumber" placeholder="可选，输入床位号如 201-1" clearable />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -192,7 +191,7 @@ const form = reactive({
   birthDate: '',
   age: null,
   admissionDate: '',
-  bedId: null,
+  customBedNumber: '',
   category: '',
   enableLongCare: 0,
   enableCoupon: 0,
@@ -203,7 +202,7 @@ const form = reactive({
   paymentMethod: 'MONTHLY',
   bankAccount: '',
   careLevel: '',
-  disabilityLevel: 'SELF_CARE',
+  disabilityLevel: 'INTACT',
   staffIds: [],
   contactName: '',
   contactRelationship: '子女',
@@ -218,7 +217,6 @@ const rules = {
   idCard: [{ required: true, message: '请输入身份证号', trigger: 'blur' }],
   category: [{ required: true, message: '请选择人员类别', trigger: 'change' }],
   admissionDate: [{ required: true, message: '请选择入住日期', trigger: 'change' }],
-  bedId: [{ required: true, message: '请选择床位', trigger: 'change' }],
   contactName: [{ required: true, message: '请输入联系人姓名', trigger: 'blur' }],
   contactPhone: [{ required: true, message: '请输入联系人电话', trigger: 'blur' }],
   contractMonthlyFee: [{ required: true, message: '请输入合同月费用', trigger: 'blur' }]
@@ -295,6 +293,7 @@ async function submit() {
   try {
     const payload = {
       ...form,
+      customBedNumber: form.customBedNumber?.trim() || null,
       contacts: [
         {
           name: form.contactName,
@@ -304,6 +303,10 @@ async function submit() {
           sortOrder: 1
         }
       ]
+    }
+    // If customBedNumber is provided, clear bedId so backend uses customBedNumber
+    if (payload.customBedNumber) {
+      payload.bedId = null
     }
     const resp = await api.post('/api/elderly', payload)
     const body = resp.data
@@ -323,11 +326,6 @@ onMounted(async () => {
   const mm = String(today.getMonth() + 1).padStart(2, '0')
   const dd = String(today.getDate()).padStart(2, '0')
   form.admissionDate = `${yyyy}-${mm}-${dd}`
-  try {
-    await fetchBeds()
-  } catch (e) {
-    ElMessage.error(e.message || '加载床位失败')
-  }
   searchStaff('')
 })
 </script>

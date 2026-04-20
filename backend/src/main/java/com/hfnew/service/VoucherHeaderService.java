@@ -242,7 +242,7 @@ public class VoucherHeaderService {
     private String generateVoucherNo(String voucherWord, LocalDate date) {
         String prefix = voucherWord + "-" + date.format(DateTimeFormatter.ofPattern("yyyyMM")) + "-";
         Integer maxSeq = jdbcTemplate.queryForObject(
-                "SELECT MAX(CAST(SUBSTRING(voucher_no, ?) AS INTEGER)) FROM t_voucher_header WHERE voucher_no LIKE ? AND deleted = 0",
+                "SELECT MAX(CAST(SUBSTRING(voucher_no, ?) AS UNSIGNED)) FROM t_voucher_header WHERE voucher_no LIKE ? AND deleted = 0",
                 Integer.class,
                 prefix.length() + 1,
                 prefix + "%"

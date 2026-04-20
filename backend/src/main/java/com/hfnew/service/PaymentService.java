@@ -36,21 +36,25 @@ public class PaymentService {
     private final SystemConfigService systemConfigService;
 
     public List<ElderlyOption> listElderlyOptions(String keyword) {
-        String baseSql = "SELECT id, name FROM t_elderly WHERE deleted = 0 AND status = 'ACTIVE'";
+        String baseSql = "SELECT id, name, id_card, unique_no FROM t_elderly WHERE deleted = 0 AND (status = 'ACTIVE' OR status = 'ON_LEAVE')";
         if (StringUtils.hasText(keyword)) {
-            String sql = baseSql + " AND name LIKE ? ORDER BY id DESC LIMIT 50";
+            String sql = baseSql + " AND name LIKE ? ORDER BY name ASC";
             return jdbcTemplate.query(sql, (rs, rowNum) -> {
                 ElderlyOption opt = new ElderlyOption();
                 opt.setId(rs.getLong("id"));
                 opt.setName(rs.getString("name"));
+                opt.setIdCard(rs.getString("id_card"));
+                opt.setUniqueNo(rs.getString("unique_no"));
                 return opt;
             }, "%" + keyword + "%");
         }
-        String sql = baseSql + " ORDER BY id DESC LIMIT 50";
+        String sql = baseSql + " ORDER BY name ASC";
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             ElderlyOption opt = new ElderlyOption();
             opt.setId(rs.getLong("id"));
             opt.setName(rs.getString("name"));
+            opt.setIdCard(rs.getString("id_card"));
+            opt.setUniqueNo(rs.getString("unique_no"));
             return opt;
         });
     }
@@ -96,6 +100,7 @@ public class PaymentService {
         record.setRemark(request.getRemark());
         record.setIncomeType(request.getIncomeType());
         record.setDescription(request.getDescription());
+        record.setPaymentDate(request.getPaymentDate());
         paymentRecordMapper.insert(record);
 
         // 仅当 elderlyId 有值时才更新老人费用账户
@@ -193,6 +198,7 @@ public class PaymentService {
         vo.setRemark(r.getRemark());
         vo.setIncomeType(r.getIncomeType());
         vo.setDescription(r.getDescription());
+        vo.setPaymentDate(r.getPaymentDate());
         vo.setCreateTime(r.getCreateTime());
         return vo;
     }

@@ -9,6 +9,7 @@ import com.hfnew.entity.*;
 import com.hfnew.exception.BizException;
 import com.hfnew.mapper.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddressList;
@@ -41,6 +42,7 @@ public class ElderlyService {
     private final StaffAssignmentMapper staffAssignmentMapper;
     private final BedTransferMapper bedTransferMapper;
     private final FeeAccountMapper feeAccountMapper;
+    private final ElderlyChangeLogMapper changeLogMapper;
     private final BedService bedService;
     private final JdbcTemplate jdbcTemplate;
 
@@ -83,7 +85,16 @@ public class ElderlyService {
     public Long create(ElderlyCreateRequest request) {
         validateCreate(request);
 
-        bedService.occupy(request.getBedId());
+        // Support custom bed number: if customBedNumber is provided and bedId is null, find or create the bed
+        Long bedId = request.getBedId();
+        if (bedId == null && StringUtils.hasText(request.getCustomBedNumber())) {
+            Bed customBed = bedService.findOrCreateByCustomNumber(request.getCustomBedNumber());
+            bedId = customBed.getId();
+        }
+
+        if (bedId != null) {
+            bedService.occupy(bedId);
+        }
 
         Elderly e = new Elderly();
         e.setUniqueNo(generateUniqueNo());
@@ -93,7 +104,7 @@ public class ElderlyService {
         e.setBirthDate(request.getBirthDate());
         e.setAge(request.getAge());
         e.setAdmissionDate(request.getAdmissionDate() == null ? LocalDate.now() : request.getAdmissionDate());
-        e.setBedId(request.getBedId());
+        e.setBedId(bedId);
         e.setCategory(request.getCategory());
         e.setEnableLongCare(request.getEnableLongCare() == null ? 0 : request.getEnableLongCare());
         e.setEnableCoupon(request.getEnableCoupon() == null ? 0 : request.getEnableCoupon());
@@ -104,7 +115,7 @@ public class ElderlyService {
         e.setPaymentMethod(request.getPaymentMethod());
         e.setBankAccount(request.getBankAccount());
         e.setCareLevel(request.getCareLevel());
-        e.setDisabilityLevel(request.getDisabilityLevel() == null ? "SELF_CARE" : request.getDisabilityLevel());
+        e.setDisabilityLevel(request.getDisabilityLevel() == null ? "INTACT" : request.getDisabilityLevel());
         e.setStatus("ACTIVE");
         elderlyMapper.insert(e);
 
@@ -119,6 +130,34 @@ public class ElderlyService {
     public void update(Long id, ElderlyUpdateRequest request) {
         Elderly e = elderlyMapper.selectById(id);
         if (e == null) throw new BizException(404, 404, "老人不存在");
+
+        // Record changes before applying
+        String operator = getCurrentOperator();
+
+        // Check and log disabilityLevel change
+        if (request.getDisabilityLevel() != null && !request.getDisabilityLevel().equals(e.getDisabilityLevel())) {
+            logChange(id, "disabilityLevel", "失能等级",
+                translateDisability(e.getDisabilityLevel()),
+                translateDisability(request.getDisabilityLevel()), operator);
+        }
+
+        // Check and log category change
+        if (request.getCategory() != null && !request.getCategory().equals(e.getCategory())) {
+            logChange(id, "category", "类别",
+                translateCategory(e.getCategory()),
+                translateCategory(request.getCategory()), operator);
+        }
+
+        // Check and log contractMonthlyFee change
+        if (request.getContractMonthlyFee() != null) {
+            BigDecimal oldFee = e.getContractMonthlyFee();
+            if (oldFee == null || oldFee.compareTo(request.getContractMonthlyFee()) != 0) {
+                logChange(id, "contractMonthlyFee", "合同月费",
+                    oldFee == null ? "未设置" : oldFee.toPlainString(),
+                    request.getContractMonthlyFee().toPlainString(), operator);
+            }
+        }
+
         if (request.getName() != null) e.setName(request.getName());
         if (request.getGender() != null) e.setGender(request.getGender());
         if (request.getBirthDate() != null) e.setBirthDate(request.getBirthDate());
@@ -148,6 +187,14 @@ public class ElderlyService {
             upsertContacts(id, request.getContacts());
         }
         if (request.getStaffIds() != null) {
+            // Get old staffIds for change log
+            List<Long> oldStaffIds = listActiveStaffIds(id);
+            if (!new HashSet<>(oldStaffIds).equals(new HashSet<>(request.getStaffIds()))) {
+                // Get staff names for log
+                String oldNames = getStaffNames(oldStaffIds);
+                String newNames = getStaffNames(request.getStaffIds());
+                logChange(id, "staffIds", "关联护工", oldNames, newNames, operator);
+            }
             upsertStaffAssignments(id, request.getStaffIds());
         }
     }
@@ -160,6 +207,15 @@ public class ElderlyService {
         if (!"ACTIVE".equals(e.getStatus()) && !"ON_LEAVE".equals(e.getStatus())) {
             throw new BizException(400, 400, "当前状态不可退住");
         }
+        
+        String operator = getCurrentOperator();
+        
+        // 记录状态变更日志
+        logChange(id, "status", "状态", "在住", "退住", operator);
+        if (request.getDischargeReason() != null && !request.getDischargeReason().isEmpty()) {
+            logChange(id, "dischargeReason", "退住原因", "", request.getDischargeReason(), operator);
+        }
+        
         e.setStatus("DISCHARGED");
         e.setDischargeDate(request.getDischargeDate() == null ? LocalDate.now() : request.getDischargeDate());
         e.setDischargeReason(request.getDischargeReason());
@@ -178,14 +234,55 @@ public class ElderlyService {
     }
 
     @Transactional
+    public void undoDischarge(Long id) {
+        Elderly e = elderlyMapper.selectById(id);
+        if (e == null) throw new BizException(404, 404, "老人记录不存在");
+        if (!"DISCHARGED".equals(e.getStatus())) {
+            throw new BizException(400, 400, "该老人当前不是退住状态，无法撤销");
+        }
+        
+        String operator = getCurrentOperator();
+        
+        // 记录变更日志
+        logChange(id, "status", "状态", "退住", "在住", operator);
+        
+        // 恢复状态
+        e.setStatus("ACTIVE");
+        
+        // 清除退住信息（保留在变更日志中作为历史记录）
+        String oldDischargeDate = e.getDischargeDate() != null ? e.getDischargeDate().toString() : "";
+        String oldDischargeReason = e.getDischargeReason() != null ? e.getDischargeReason() : "";
+        
+        if (!oldDischargeDate.isEmpty()) {
+            logChange(id, "dischargeDate", "退住日期", oldDischargeDate, "已撤销", operator);
+        }
+        if (!oldDischargeReason.isEmpty()) {
+            logChange(id, "dischargeReason", "退住原因", oldDischargeReason, "已撤销", operator);
+        }
+        
+        e.setDischargeDate(null);
+        e.setDischargeReason(null);
+        // 注意：bed_id不自动恢复，用户需要通过转床功能手动分配床位
+        
+        elderlyMapper.updateById(e);
+    }
+
+    @Transactional
     public void transfer(Long id, ElderlyTransferRequest request, Long operatorId) {
-        if (request.getToBedId() == null) throw new BizException(400, 400, "请选择目标床位");
+        // Support custom bed number: if customBedNumber is provided, find or create the bed first
+        Long toBedId = request.getToBedId();
+        if (toBedId == null && StringUtils.hasText(request.getCustomBedNumber())) {
+            Bed customBed = bedService.findOrCreateByCustomNumber(request.getCustomBedNumber());
+            toBedId = customBed.getId();
+        }
+        if (toBedId == null) throw new BizException(400, 400, "请选择目标床位");
+
         Elderly e = elderlyMapper.selectById(id);
         if (e == null) throw new BizException(404, 404, "老人不存在");
         if (!"ACTIVE".equals(e.getStatus())) {
             throw new BizException(400, 400, "当前状态不可转床");
         }
-        if (Objects.equals(e.getBedId(), request.getToBedId())) {
+        if (Objects.equals(e.getBedId(), toBedId)) {
             throw new BizException(400, 400, "目标床位不能与当前床位相同");
         }
 
@@ -193,21 +290,31 @@ public class ElderlyService {
 
         // 占用新床位（条件更新防并发）
         int occupied = jdbcTemplate.update(
-            "UPDATE t_bed SET status = 1 WHERE id = ? AND status = 0", request.getToBedId());
+            "UPDATE t_bed SET status = 1 WHERE id = ? AND status = 0", toBedId);
         if (occupied == 0) throw new BizException(409, 409, "目标床位已被占用，请刷新重试");
 
         // 释放旧床位（条件更新防并发）
-        int freed = jdbcTemplate.update(
-            "UPDATE t_bed SET status = 0 WHERE id = ? AND status = 1", fromBedId);
-        if (freed == 0) throw new BizException(409, 409, "旧床位状态异常，请刷新重试");
+        if (fromBedId != null) {
+            int freed = jdbcTemplate.update(
+                "UPDATE t_bed SET status = 0 WHERE id = ? AND status = 1", fromBedId);
+            if (freed == 0) throw new BizException(409, 409, "旧床位状态异常，请刷新重试");
+        }
 
-        e.setBedId(request.getToBedId());
+        e.setBedId(toBedId);
         elderlyMapper.updateById(e);
+
+        // Log bed change
+        String operator = getCurrentOperator();
+        Bed fromBed = fromBedId == null ? null : bedService.getById(fromBedId);
+        Bed toBed = bedService.getById(toBedId);
+        String fromBedLabel = fromBed == null ? "未知" : formatBedLabel(fromBed);
+        String toBedLabel = toBed == null ? "未知" : formatBedLabel(toBed);
+        logChange(id, "bedId", "床位", fromBedLabel, toBedLabel, operator);
 
         BedTransfer bt = new BedTransfer();
         bt.setElderlyId(id);
         bt.setFromBedId(fromBedId);
-        bt.setToBedId(request.getToBedId());
+        bt.setToBedId(toBedId);
         bt.setTransferDate(request.getTransferDate() == null ? LocalDate.now() : request.getTransferDate());
         bt.setReason(request.getReason());
         bt.setOperatorId(operatorId);
@@ -229,7 +336,7 @@ public class ElderlyService {
     private void validateCreate(ElderlyCreateRequest request) {
         if (!StringUtils.hasText(request.getName())) throw new BizException(400, 400, "姓名不能为空");
         if (!StringUtils.hasText(request.getIdCard())) throw new BizException(400, 400, "身份证号不能为空");
-        if (request.getBedId() == null) throw new BizException(400, 400, "请选择床位");
+
         if (!StringUtils.hasText(request.getCategory())) throw new BizException(400, 400, "请选择人员类别");
 
         Integer cnt = jdbcTemplate.queryForObject(
@@ -251,7 +358,7 @@ public class ElderlyService {
     private String generateUniqueNo() {
         String prefix = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
         Integer maxSeq = jdbcTemplate.queryForObject(
-                "SELECT MAX(CAST(SUBSTRING(unique_no, 7, 4) AS INTEGER)) FROM t_elderly WHERE deleted = 0 AND unique_no LIKE ?",
+                "SELECT MAX(CAST(SUBSTRING(unique_no, 7, 4) AS UNSIGNED)) FROM t_elderly WHERE deleted = 0 AND unique_no LIKE ?",
                 Integer.class,
                 prefix + "%"
         );
@@ -412,7 +519,7 @@ public class ElderlyService {
         dto.setId(c.getId());
         dto.setName(c.getName());
         dto.setRelationship(c.getRelationship());
-        dto.setPhone(maskPhone(c.getPhone()));
+        dto.setPhone(c.getPhone());
         dto.setIsEmergency(c.getIsEmergency());
         dto.setSortOrder(c.getSortOrder());
         return dto;
@@ -757,5 +864,80 @@ public class ElderlyService {
             }
         }
         return null;
+    }
+
+    public List<ElderlyChangeLog> getChangeLogs(Long elderlyId) {
+        LambdaQueryWrapper<ElderlyChangeLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ElderlyChangeLog::getElderlyId, elderlyId)
+               .orderByDesc(ElderlyChangeLog::getCreateTime);
+        return changeLogMapper.selectList(wrapper);
+    }
+
+    private void logChange(Long elderlyId, String fieldName, String fieldLabel, String oldValue, String newValue, String operator) {
+        ElderlyChangeLog changeLog = new ElderlyChangeLog();
+        changeLog.setElderlyId(elderlyId);
+        changeLog.setFieldName(fieldName);
+        changeLog.setFieldLabel(fieldLabel);
+        changeLog.setOldValue(oldValue);
+        changeLog.setNewValue(newValue);
+        changeLog.setOperator(operator);
+        changeLogMapper.insert(changeLog);
+    }
+
+    private String getCurrentOperator() {
+        try {
+            return SecurityContextHolder.getContext().getAuthentication().getName();
+        } catch (Exception e) {
+            return "系统";
+        }
+    }
+
+    private String translateDisability(String val) {
+        if (val == null) return "未设置";
+        return switch(val) {
+            case "INTACT", "SELF_CARE" -> "能力完好";
+            case "MILD" -> "轻度失能";
+            case "MODERATE" -> "中度失能";
+            case "SEVERE" -> "重度失能";
+            case "TOTAL" -> "完全失能";
+            default -> val;
+        };
+    }
+
+    private String translateCategory(String val) {
+        if (val == null) return "未设置";
+        return switch(val) {
+            case "WU_BAO" -> "五保对象";
+            case "LOW_BAO" -> "低保对象";
+            case "SOCIAL" -> "社会化入住";
+            default -> val;
+        };
+    }
+
+    private String formatBedLabel(Bed bed) {
+        if (bed == null) return "未知";
+        List<String> parts = new ArrayList<>();
+        if (bed.getBuilding() != null) parts.add(bed.getBuilding());
+        if (bed.getFloor() != null) parts.add(bed.getFloor());
+        // If bedNumber already contains a dash (e.g., "201-1"), it's a composite identifier
+        // that includes the room number, so skip roomNumber to avoid duplication
+        if (bed.getBedNumber() != null && bed.getBedNumber().contains("-")) {
+            parts.add(bed.getBedNumber());
+        } else {
+            if (bed.getRoomNumber() != null) parts.add(bed.getRoomNumber());
+            if (bed.getBedNumber() != null) parts.add(bed.getBedNumber());
+        }
+        return parts.isEmpty() ? "未知" : String.join("-", parts);
+    }
+
+    private String getStaffNames(List<Long> staffIds) {
+        if (staffIds == null || staffIds.isEmpty()) return "无";
+        String in = staffIds.stream().map(x -> "?").collect(Collectors.joining(","));
+        String sql = "SELECT name FROM t_staff WHERE deleted = 0 AND id IN (" + in + ")";
+        List<String> names = new ArrayList<>();
+        jdbcTemplate.query(sql, rs -> {
+            names.add(rs.getString("name"));
+        }, staffIds.toArray());
+        return names.isEmpty() ? "无" : String.join(", ", names);
     }
 }

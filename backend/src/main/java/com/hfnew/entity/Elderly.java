@@ -45,7 +45,7 @@ public class Elderly {
 
     private String careLevel;
 
-    private String disabilityLevel; // SELF_CARE, MILD, MODERATE, SEVERE
+    private String disabilityLevel; // INTACT(能力完好), MILD(轻度失能), MODERATE(中度失能), SEVERE(重度失能), TOTAL(完全失能); legacy: SELF_CARE
 
     private Integer enableLongCare;
 

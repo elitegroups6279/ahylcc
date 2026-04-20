@@ -270,6 +270,7 @@ CREATE TABLE IF NOT EXISTS t_payment_record (
   voucher_url VARCHAR(500) COMMENT '凭证图片URL',
   receipt_no VARCHAR(50),
   operator_id BIGINT COMMENT '操作员ID',
+  payment_date DATE COMMENT '缴费时间',
   remark VARCHAR(200),
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -542,7 +543,7 @@ CREATE TABLE IF NOT EXISTS t_inventory_check (
 CREATE TABLE IF NOT EXISTS t_bed_transfer (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   elderly_id BIGINT NOT NULL,
-  from_bed_id BIGINT NOT NULL,
+  from_bed_id BIGINT COMMENT '原床位ID，首次分配可为空',
   to_bed_id BIGINT NOT NULL,
   transfer_date DATE NOT NULL,
   reason VARCHAR(200),
@@ -689,6 +690,18 @@ CREATE TABLE IF NOT EXISTS t_service_assessment (
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS t_elderly_change_log (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  elderly_id BIGINT NOT NULL,
+  field_name VARCHAR(50) NOT NULL COMMENT '变更字段',
+  field_label VARCHAR(50) NOT NULL COMMENT '字段中文名',
+  old_value VARCHAR(200) COMMENT '旧值',
+  new_value VARCHAR(200) COMMENT '新值',
+  operator VARCHAR(50) COMMENT '操作人',
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_elderly_id ON t_elderly_change_log (elderly_id);
 
 -- ========== 支出记录表 ==========
 CREATE TABLE IF NOT EXISTS t_expense_record (

@@ -77,7 +77,7 @@ public class VoucherService {
     private String generateVoucherNo(LocalDate date) {
         String prefix = date.format(DateTimeFormatter.ofPattern("yyyyMM"));
         Integer maxSeq = jdbcTemplate.queryForObject(
-                "SELECT MAX(CAST(SUBSTRING(voucher_no, 7, 4) AS INTEGER)) FROM t_voucher WHERE deleted = 0 AND voucher_no LIKE ?",
+                "SELECT MAX(CAST(SUBSTRING(voucher_no, 7, 4) AS UNSIGNED)) FROM t_voucher WHERE deleted = 0 AND voucher_no LIKE ?",
                 Integer.class,
                 prefix + "%"
         );

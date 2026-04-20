@@ -42,7 +42,7 @@
       <el-row style="margin-bottom: 16px" :gutter="12">
         <el-col :span="8">
           <el-select v-model="incomeFilter.elderlyId" placeholder="选择老人" clearable filterable>
-            <el-option v-for="e in elderlyOptions" :key="e.id" :label="e.name" :value="e.id" />
+            <el-option v-for="e in elderlyOptions" :key="e.id" :label="`${e.name} (${e.uniqueNo})`" :value="e.id" />
           </el-select>
         </el-col>
         <el-col :span="16" style="text-align: right">
@@ -79,7 +79,8 @@
           </template>
         </el-table-column>
         <el-table-column prop="receiptNo" label="收据号" width="140" />
-        <el-table-column prop="createTime" label="时间" width="180" />
+        <el-table-column prop="paymentDate" label="缴费时间" width="120" />
+        <el-table-column prop="createTime" label="记录时间" width="180" />
         <el-table-column prop="remark" label="备注" />
       </el-table>
 
@@ -182,14 +183,20 @@
             placeholder="选择老人"
             style="width: 100%"
           >
-            <el-option v-for="e in elderlyOptions" :key="e.id" :label="e.name" :value="e.id" />
+            <el-option v-for="e in elderlyOptions" :key="e.id" :label="`${e.name} (${e.uniqueNo})`" :value="e.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="selectedElderly" label="身份证号">
+          <el-input :model-value="selectedElderly.idCard" disabled />
         </el-form-item>
         <el-form-item v-if="incomeForm.incomeType !== 'ELDERLY_FEE'" label="收入说明" prop="description">
           <el-input v-model="incomeForm.description" placeholder="请输入收入说明" />
         </el-form-item>
         <el-form-item label="金额" prop="amount">
           <el-input-number v-model="incomeForm.amount" :min="0.01" :precision="2" :step="10" style="width: 220px" />
+        </el-form-item>
+        <el-form-item label="缴费时间" prop="paymentDate" :rules="[{ required: true, message: '请选择缴费时间' }]">
+          <el-date-picker v-model="incomeForm.paymentDate" type="date" placeholder="选择缴费时间" style="width: 100%" value-format="YYYY-MM-DD" />
         </el-form-item>
         <el-form-item label="方式" prop="paymentMethod">
           <el-select v-model="incomeForm.paymentMethod" placeholder="选择方式" style="width: 220px">
@@ -251,7 +258,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api as client } from '../../api/client'
 
@@ -271,6 +278,10 @@ const summary = reactive({
   totalIncome: 0,
   totalExpense: 0,
   netAmount: 0
+})
+
+const selectedElderly = computed(() => {
+  return elderlyOptions.value.find(e => e.id === incomeForm.elderlyId) || null
 })
 
 // 老人选项
@@ -309,7 +320,8 @@ const incomeForm = reactive({
   receiptNo: '',
   remark: '',
   incomeType: 'ELDERLY_FEE',
-  description: ''
+  description: '',
+  paymentDate: new Date().toISOString().slice(0, 10)
 })
 const incomeRules = {
   incomeType: [{ required: true, message: '请选择收入类型', trigger: 'change' }],
@@ -476,7 +488,8 @@ async function submitIncome() {
       receiptNo: incomeForm.receiptNo || null,
       remark: incomeForm.remark || null,
       incomeType: incomeForm.incomeType,
-      description: incomeForm.incomeType !== 'ELDERLY_FEE' ? (incomeForm.description || null) : null
+      description: incomeForm.incomeType !== 'ELDERLY_FEE' ? (incomeForm.description || null) : null,
+      paymentDate: incomeForm.paymentDate
     })
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '保存失败')
@@ -491,6 +504,7 @@ async function submitIncome() {
     incomeForm.remark = ''
     incomeForm.incomeType = 'ELDERLY_FEE'
     incomeForm.description = ''
+    incomeForm.paymentDate = new Date().toISOString().slice(0, 10)
     // 恢复校验规则
     incomeRules.elderlyId = [{ required: true, message: '请选择老人', trigger: 'change' }]
     await loadIncome()

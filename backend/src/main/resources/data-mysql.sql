@@ -89,8 +89,9 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission)
 VALUES
   (31, 3, '护工管理', 1, '/staff/list', 'pages/staff/StaffList', NULL, 1, 'staff:list'),
-  (32, 3, '打卡记录', 1, '/staff/attendance', 'pages/staff/Attendance', NULL, 2, 'staff:attendance'),
-  (33, 3, '排班管理', 1, '/staff/schedule', 'pages/staff/Schedule', NULL, 3, 'staff:schedule')
+  (34, 3, '员工管理', 1, '/staff/employee', 'pages/staff/EmployeeList', NULL, 2, 'staff:employee'),
+  (32, 3, '打卡记录', 1, '/staff/attendance', 'pages/staff/Attendance', NULL, 3, 'staff:attendance'),
+  (33, 3, '排班管理', 1, '/staff/schedule', 'pages/staff/Schedule', NULL, 4, 'staff:schedule')
 ON DUPLICATE KEY UPDATE
   parent_id = VALUES(parent_id),
   menu_name = VALUES(menu_name),
@@ -104,7 +105,7 @@ ON DUPLICATE KEY UPDATE
 -- 财务管理子菜单
 INSERT INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission)
 VALUES
-  (41, 4, '缴费管理', 1, '/finance/payment', 'pages/finance/Payment', NULL, 1, 'finance:payment'),
+  (41, 4, '收支管理', 1, '/finance/payment', 'pages/finance/Payment', NULL, 1, 'finance:cashflow'),
   (42, 4, '凭证管理', 1, '/finance/voucher', 'pages/finance/Voucher', NULL, 2, 'finance:voucher'),
   (43, 4, '报账管理', 1, '/finance/reimbursement', 'pages/finance/Reimbursement', NULL, 3, 'finance:reimbursement'),
   (44, 4, '月度账单', 1, '/finance/bills', 'pages/finance/FeeBill', NULL, 4, 'finance:bill'),
@@ -170,7 +171,8 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission)
 VALUES
   (71, 7, '预约管理', 1, '/home-service/orders', 'pages/home-service/Orders', NULL, 1, 'home-service:orders'),
-  (72, 7, '服务记录', 1, '/home-service/records', 'pages/home-service/Records', NULL, 2, 'home-service:records')
+  (72, 7, '服务记录', 1, '/home-service/records', 'pages/home-service/Records', NULL, 2, 'home-service:records'),
+  (73, 7, '服务评估', 1, '/home-service/assessment', 'pages/home-service/Assessment', NULL, 3, 'home-service:assessment')
 ON DUPLICATE KEY UPDATE
   parent_id = VALUES(parent_id),
   menu_name = VALUES(menu_name),

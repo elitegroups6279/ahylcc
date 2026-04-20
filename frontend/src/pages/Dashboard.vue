@@ -24,6 +24,28 @@
       </el-col>
     </el-row>
 
+    <!-- 待处理事项区 -->
+    <el-card class="pending-card" shadow="hover" v-if="pendingSummary">
+      <template #header>
+        <div class="card-header">
+          <span>待处理事项</span>
+        </div>
+      </template>
+      <el-row :gutter="16">
+        <el-col :span="6" v-for="item in pendingItems" :key="item.label">
+          <div class="pending-item" :class="item.cls">
+            <div class="pending-icon">
+              <el-icon :size="24"><component :is="item.icon" /></el-icon>
+            </div>
+            <div class="pending-info">
+              <div class="pending-count">{{ item.value }}</div>
+              <div class="pending-label">{{ item.label }}</div>
+            </div>
+          </div>
+        </el-col>
+      </el-row>
+    </el-card>
+
     <!-- 日历卡片 -->
     <el-card class="calendar-card" shadow="hover">
       <template #header>
@@ -146,10 +168,11 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '../store/auth'
 import { api } from '../api/client'
-import { User, UserFilled, Money, Bell, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { User, UserFilled, Money, Bell, ArrowLeft, ArrowRight, Warning, Document, Tickets, FirstAidKit } from '@element-plus/icons-vue'
 
 const authStore = useAuthStore()
 const feeWarnings = ref([])
+const pendingSummary = ref(null)
 const revenueChartRef = ref(null)
 const categoryChartRef = ref(null)
 let revenueChart = null
@@ -338,6 +361,29 @@ async function fetchFeeWarnings() {
   }
 }
 
+// 加载待处理事项汇总
+async function loadPendingSummary() {
+  try {
+    const res = await api.get('/api/dashboard/pending-summary')
+    if (res.data?.code === 200) {
+      pendingSummary.value = res.data.data
+    }
+  } catch (e) {
+    console.warn('加载待处理事项失败', e)
+  }
+}
+
+// 待处理事项配置
+const pendingItems = computed(() => {
+  if (!pendingSummary.value) return []
+  return [
+    { label: '费用预警', value: pendingSummary.value.feeWarningCount ?? 0, icon: Warning, cls: 'warn' },
+    { label: '待审报账', value: pendingSummary.value.pendingReimbursementCount ?? 0, icon: Tickets, cls: 'warn' },
+    { label: '待审凭证', value: pendingSummary.value.pendingVoucherCount ?? 0, icon: Document, cls: 'info' },
+    { label: '药品效期预警', value: pendingSummary.value.drugExpiryWarningCount ?? 0, icon: FirstAidKit, cls: 'danger' }
+  ]
+})
+
 // 加载统计数据
 async function loadStats() {
   try {
@@ -418,6 +464,7 @@ onMounted(async () => {
   }
   await fetchFeeWarnings()
   await loadStats()
+  await loadPendingSummary()
   await loadCalendarEvents()
   await loadCharts()
   timer = setInterval(fetchFeeWarnings, 30000)
@@ -536,6 +583,54 @@ onUnmounted(() => {
 
 .permission-tag {
   margin: 0;
+}
+
+/* 待处理事项区样式 */
+.pending-card {
+  margin-bottom: 16px;
+}
+
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f5f7fa;
+  transition: transform 0.2s;
+}
+
+.pending-item:hover {
+  transform: translateY(-2px);
+}
+
+.pending-item.warn { border-left: 3px solid #fa8c16; }
+.pending-item.info { border-left: 3px solid #1890ff; }
+.pending-item.danger { border-left: 3px solid #ff4d4f; }
+
+.pending-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.pending-item.warn .pending-icon { background: #fff7e6; color: #fa8c16; }
+.pending-item.info .pending-icon { background: #e6f7ff; color: #1890ff; }
+.pending-item.danger .pending-icon { background: #fff1f0; color: #ff4d4f; }
+
+.pending-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.pending-label {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 2px;
 }
 
 /* 日历样式 */

@@ -15,6 +15,7 @@ public class ElderlyCreateRequest {
     private Integer age;
     private LocalDate admissionDate;
     private Long bedId;
+    private String customBedNumber;
     private String category;
     private Integer enableLongCare;
     private Integer enableCoupon;
