@@ -1,0 +1,38 @@
+# === IDE & Editor ===
+.vscode/
+.idea/
+*.iml
+.trae/
+.qoder/
+
+# === Tools ===
+.tools/
+
+# === Backend ===
+backend/target/
+backend/*.jar
+*.class
+*.log
+
+# === Frontend ===
+frontend/node_modules/
+frontend/dist/
+frontend/frontend-dist.zip
+
+# === Root node_modules (ssh2 dev dep) ===
+node_modules/
+package-lock.json
+package.json
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Temp & Test scripts ===
+server-explore.*
+test-*.ps1
+
+# === Deploy secrets ===
+backend.env
+*.env.local
