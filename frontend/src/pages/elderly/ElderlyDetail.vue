@@ -20,10 +20,41 @@
 
       <el-descriptions :column="3" border>
         <el-descriptions-item label="编号">{{ detail.uniqueNo }}</el-descriptions-item>
-        <el-descriptions-item label="姓名">{{ detail.name }}</el-descriptions-item>
-        <el-descriptions-item label="身份证">{{ detail.idCardMasked }}</el-descriptions-item>
-        <el-descriptions-item label="性别">{{ detail.gender === 1 ? '男' : detail.gender === 0 ? '女' : '-' }}</el-descriptions-item>
-        <el-descriptions-item label="年龄">{{ detail.age ?? '-' }}</el-descriptions-item>
+        <el-descriptions-item label="姓名">
+          <template v-if="isEditing">
+            <el-input v-model="editForm.name" placeholder="输入姓名" clearable />
+          </template>
+          <template v-else>
+            {{ detail.name }}
+          </template>
+        </el-descriptions-item>
+        <el-descriptions-item label="身份证">
+          <template v-if="isEditing">
+            <el-input v-model="editForm.idCard" placeholder="输入身份证号" clearable maxlength="18" />
+          </template>
+          <template v-else>
+            {{ detail.idCardMasked }}
+          </template>
+        </el-descriptions-item>
+        <el-descriptions-item label="性别">
+          <template v-if="isEditing">
+            <el-select v-model="editForm.gender" placeholder="选择性别" style="width: 100%">
+              <el-option :value="1" label="男" />
+              <el-option :value="0" label="女" />
+            </el-select>
+          </template>
+          <template v-else>
+            {{ detail.gender === 1 ? '男' : detail.gender === 0 ? '女' : '-' }}
+          </template>
+        </el-descriptions-item>
+        <el-descriptions-item label="年龄">
+          <template v-if="isEditing">
+            <el-input-number v-model="editForm.age" :min="0" :max="150" :step="1" style="width: 100%" />
+          </template>
+          <template v-else>
+            {{ detail.age ?? '-' }}
+          </template>
+        </el-descriptions-item>
         <el-descriptions-item label="入住日期">{{ detail.admissionDate }}</el-descriptions-item>
         <el-descriptions-item label="床位">
           <template v-if="isEditing">
@@ -157,7 +188,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../api/client'
@@ -181,6 +212,10 @@ const originalValues = reactive({})
 
 // Edit form
 const editForm = reactive({
+  name: '',
+  idCard: '',
+  gender: null,
+  age: null,
   disabilityLevel: '',
   bedNumber: '',
   category: '',
@@ -260,6 +295,38 @@ function goBack() {
   router.back()
 }
 
+// Parse Chinese ID card to extract gender, age, and birth date
+function parseIdCard(idCard) {
+  if (!idCard || idCard.length !== 18) return null
+  const birthStr = idCard.substring(6, 14)
+  const year = parseInt(birthStr.substring(0, 4))
+  const month = parseInt(birthStr.substring(4, 6))
+  const day = parseInt(birthStr.substring(6, 8))
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null
+  const birthDate = new Date(year, month - 1, day)
+  const today = new Date()
+  let age = today.getFullYear() - birthDate.getFullYear()
+  if (today.getMonth() < birthDate.getMonth() ||
+      (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) {
+    age--
+  }
+  const genderCode = parseInt(idCard.charAt(16))
+  if (isNaN(genderCode)) return null
+  const gender = genderCode % 2 === 1 ? 1 : 0  // 1=男, 0=女
+  const birthDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  return { age, gender, birthDate: birthDateStr }
+}
+
+// Watch idCard changes to auto-update gender and age
+watch(() => editForm.idCard, (newVal) => {
+  if (!isEditing.value) return
+  const parsed = parseIdCard(newVal)
+  if (parsed) {
+    editForm.gender = parsed.gender
+    editForm.age = parsed.age
+  }
+})
+
 async function searchStaff(keyword) {
   if (!keyword) return
   staffLoading.value = true
@@ -275,6 +342,10 @@ async function searchStaff(keyword) {
 function startEdit() {
   // Initialize edit form with current values
   // Map old SELF_CARE to new INTACT for editing
+  editForm.name = detail.name || ''
+  editForm.idCard = detail.idCard || ''
+  editForm.gender = detail.gender ?? null
+  editForm.age = detail.age ?? null
   editForm.disabilityLevel = detail.disabilityLevel === 'SELF_CARE' ? 'INTACT' : detail.disabilityLevel
   editForm.bedNumber = detail.bedNumber || ''
   editForm.category = detail.category
@@ -282,6 +353,10 @@ function startEdit() {
   editForm.staffIds = detail.staffIds ? [...detail.staffIds] : []
   
   // Save original values for cancel
+  originalValues.name = detail.name || ''
+  originalValues.idCard = detail.idCard || ''
+  originalValues.gender = detail.gender ?? null
+  originalValues.age = detail.age ?? null
   originalValues.disabilityLevel = detail.disabilityLevel
   originalValues.bedNumber = detail.bedNumber || ''
   originalValues.category = detail.category
@@ -299,6 +374,10 @@ function startEdit() {
 function cancelEdit() {
   isEditing.value = false
   // Restore original values
+  editForm.name = originalValues.name
+  editForm.idCard = originalValues.idCard
+  editForm.gender = originalValues.gender
+  editForm.age = originalValues.age
   editForm.disabilityLevel = originalValues.disabilityLevel
   editForm.bedNumber = originalValues.bedNumber
   editForm.category = originalValues.category
@@ -329,6 +408,32 @@ async function saveChanges() {
     
     // Build update payload for fields that changed
     const updatePayload = {}
+    
+    // Check if name changed
+    if (editForm.name !== originalValues.name) {
+      updatePayload.name = editForm.name
+    }
+    
+    // Check if idCard changed
+    if (editForm.idCard !== originalValues.idCard) {
+      updatePayload.idCard = editForm.idCard
+      // Also send gender and age derived from the new idCard
+      const parsed = parseIdCard(editForm.idCard)
+      if (parsed) {
+        updatePayload.gender = parsed.gender
+        updatePayload.age = parsed.age
+      }
+    }
+    
+    // Check if gender changed (manual edit without idCard change)
+    if (editForm.gender !== originalValues.gender && !updatePayload.gender) {
+      updatePayload.gender = editForm.gender
+    }
+    
+    // Check if age changed (manual edit without idCard change)
+    if (editForm.age !== originalValues.age && !updatePayload.age) {
+      updatePayload.age = editForm.age
+    }
     
     // Check if disability level changed
     if (editForm.disabilityLevel !== originalDisability) {

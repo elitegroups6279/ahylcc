@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS t_elderly (
   bed_id BIGINT COMMENT '床位ID',
   category VARCHAR(20) NOT NULL COMMENT 'SOCIAL/LOW_BAO/WU_BAO',
   care_level VARCHAR(30) COMMENT '护理等级',
-  disability_level VARCHAR(20) DEFAULT 'SELF_CARE' COMMENT '失能等级: SELF_CARE自理/MILD轻度/MODERATE中度/SEVERE重度',
+  disability_level VARCHAR(20) DEFAULT 'INTACT' COMMENT '失能等级: INTACT能力完好/MILD轻度/MODERATE中度/SEVERE重度/TOTAL完全失能; legacy: SELF_CARE',
   enable_long_care TINYINT DEFAULT 0 COMMENT '是否享受长护险',
   enable_coupon TINYINT DEFAULT 0 COMMENT '是否使用消费券',
   nursing_needs VARCHAR(1000) COMMENT '护理需求JSON',
@@ -701,7 +701,7 @@ CREATE TABLE IF NOT EXISTS t_elderly_change_log (
   operator VARCHAR(50) COMMENT '操作人',
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_elderly_id ON t_elderly_change_log (elderly_id);
+CREATE INDEX idx_elderly_id ON t_elderly_change_log (elderly_id);
 
 -- ========== 支出记录表 ==========
 CREATE TABLE IF NOT EXISTS t_expense_record (

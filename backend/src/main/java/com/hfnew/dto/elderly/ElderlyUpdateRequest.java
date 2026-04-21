@@ -9,6 +9,7 @@ import java.util.List;
 @Data
 public class ElderlyUpdateRequest {
     private String name;
+    private String idCard;
     private Integer gender;
     private LocalDate birthDate;
     private Integer age;

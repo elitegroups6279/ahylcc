@@ -134,6 +134,34 @@ public class ElderlyService {
         // Record changes before applying
         String operator = getCurrentOperator();
 
+        // Check and log name change
+        if (request.getName() != null && !request.getName().equals(e.getName())) {
+            logChange(id, "name", "姓名",
+                e.getName() == null ? "未设置" : e.getName(),
+                request.getName(), operator);
+        }
+
+        // Check and log idCard change
+        if (request.getIdCard() != null && !request.getIdCard().equals(e.getIdCard())) {
+            logChange(id, "idCard", "身份证号",
+                e.getIdCard() == null ? "未设置" : maskIdCard(e.getIdCard()),
+                maskIdCard(request.getIdCard()), operator);
+        }
+
+        // Check and log gender change
+        if (request.getGender() != null && !request.getGender().equals(e.getGender())) {
+            logChange(id, "gender", "性别",
+                e.getGender() == null ? "未设置" : (e.getGender() == 1 ? "男" : "女"),
+                request.getGender() == 1 ? "男" : "女", operator);
+        }
+
+        // Check and log age change
+        if (request.getAge() != null && !request.getAge().equals(e.getAge())) {
+            logChange(id, "age", "年龄",
+                e.getAge() == null ? "未设置" : String.valueOf(e.getAge()),
+                String.valueOf(request.getAge()), operator);
+        }
+
         // Check and log disabilityLevel change
         if (request.getDisabilityLevel() != null && !request.getDisabilityLevel().equals(e.getDisabilityLevel())) {
             logChange(id, "disabilityLevel", "失能等级",
@@ -159,6 +187,7 @@ public class ElderlyService {
         }
 
         if (request.getName() != null) e.setName(request.getName());
+        if (request.getIdCard() != null) e.setIdCard(request.getIdCard());
         if (request.getGender() != null) e.setGender(request.getGender());
         if (request.getBirthDate() != null) e.setBirthDate(request.getBirthDate());
         if (request.getAge() != null) e.setAge(request.getAge());
@@ -174,9 +203,10 @@ public class ElderlyService {
         if (request.getDisabilityLevel() != null) e.setDisabilityLevel(request.getDisabilityLevel());
 
         // 校验身份证号唯一（排除自身ID，退住的不算）
+        String effectiveIdCard = request.getIdCard() != null ? request.getIdCard() : e.getIdCard();
         Integer cnt = jdbcTemplate.queryForObject(
             "SELECT COUNT(1) FROM t_elderly WHERE deleted = 0 AND id_card = ? AND status != 'DISCHARGED' AND id != ?",
-            Integer.class, e.getIdCard(), id);
+            Integer.class, effectiveIdCard, id);
         if (cnt != null && cnt > 0) {
             throw new BizException(400, 400, "该身份证号已存在在住记录");
         }
@@ -481,6 +511,7 @@ public class ElderlyService {
         vo.setUniqueNo(e.getUniqueNo());
         vo.setName(e.getName());
         vo.setIdCardMasked(maskIdCard(e.getIdCard()));
+        vo.setIdCard(e.getIdCard());
         vo.setGender(e.getGender());
         vo.setBirthDate(e.getBirthDate());
         // 动态计算年龄：根据birthDate计算

@@ -13,6 +13,7 @@ public class ElderlyVO {
     private String uniqueNo;
     private String name;
     private String idCardMasked;
+    private String idCard;
     private Integer gender;
     private LocalDate birthDate;
     private Integer age;

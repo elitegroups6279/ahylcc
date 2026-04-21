@@ -34,11 +34,12 @@
         </el-table-column>
         <el-table-column label="失能等级" width="120">
           <template #default="{ row }">
-            <el-tag v-if="row.disabilityLevel === 'SELF_CARE'" type="success">自理</el-tag>
+            <el-tag v-if="row.disabilityLevel === 'SELF_CARE' || row.disabilityLevel === 'INTACT'" type="success">能力完好</el-tag>
             <el-tag v-else-if="row.disabilityLevel === 'MILD'" type="primary">轻度失能</el-tag>
             <el-tag v-else-if="row.disabilityLevel === 'MODERATE'" type="warning">中度失能</el-tag>
             <el-tag v-else-if="row.disabilityLevel === 'SEVERE'" type="danger">重度失能</el-tag>
-            <el-tag v-else type="info">自理</el-tag>
+            <el-tag v-else-if="row.disabilityLevel === 'TOTAL'" type="danger">完全失能</el-tag>
+            <el-tag v-else type="info">能力完好</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="余额" width="120">
