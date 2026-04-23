@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard-page">
-    <!-- 费用预警条 -->
+    <!-- 费用预警滚动条 -->
     <div v-if="feeWarnings.length > 0" class="warning-strip">
       <div class="marquee">
         <div class="marquee-content">
@@ -9,9 +9,9 @@
       </div>
     </div>
 
-    <!-- 统计卡片区 -->
+    <!-- 5个渐变色统计卡片 -->
     <el-row :gutter="16" class="stats-row">
-      <el-col :span="6" v-for="item in statsCards" :key="item.title">
+      <el-col :span="4" v-for="item in statsCards" :key="item.title" style="min-width: 180px">
         <div class="stat-card" :style="{ background: item.gradient }">
           <div class="stat-icon">
             <el-icon :size="32"><component :is="item.icon" /></el-icon>
@@ -24,136 +24,135 @@
       </el-col>
     </el-row>
 
-    <!-- 待处理事项区 -->
-    <el-card class="pending-card" shadow="hover" v-if="pendingSummary">
-      <template #header>
-        <div class="card-header">
-          <span>待处理事项</span>
-        </div>
-      </template>
-      <el-row :gutter="16">
-        <el-col :span="6" v-for="item in pendingItems" :key="item.label">
-          <div class="pending-item" :class="item.cls">
-            <div class="pending-icon">
-              <el-icon :size="24"><component :is="item.icon" /></el-icon>
+    <!-- 日历面板（左栏）+ 待办提醒（右栏）-->
+    <el-row :gutter="16" class="main-row">
+      <el-col :span="14">
+        <el-card class="calendar-card" shadow="hover">
+          <template #header>
+            <div class="calendar-header">
+              <el-button :icon="ArrowLeft" circle size="small" @click="prevMonth" />
+              <span class="calendar-title">{{ currentYear }} 年 {{ currentMonth }} 月</span>
+              <el-button :icon="ArrowRight" circle size="small" @click="nextMonth" />
+              <el-button size="small" @click="goToday" style="margin-left: 12px">今天</el-button>
             </div>
-            <div class="pending-info">
-              <div class="pending-count">{{ item.value }}</div>
-              <div class="pending-label">{{ item.label }}</div>
+          </template>
+
+          <!-- 星期头 -->
+          <div class="calendar-grid">
+            <div class="calendar-weekday" v-for="d in ['日','一','二','三','四','五','六']" :key="d">{{ d }}</div>
+
+            <!-- 日期格子 -->
+            <div
+              v-for="(cell, idx) in calendarCells"
+              :key="idx"
+              class="calendar-cell"
+              :class="{
+                'is-today': cell.isToday,
+                'is-other-month': !cell.isCurrentMonth,
+                'has-events': cell.events.length > 0
+              }"
+            >
+              <el-tooltip
+                v-if="cell.events.length > 0"
+                placement="top"
+                :content="getEventTooltip(cell.events)"
+              >
+                <div class="cell-content">
+                  <span class="cell-day">{{ cell.day }}</span>
+                  <div class="cell-dots" v-if="cell.events.length > 0">
+                    <span
+                      v-for="(color, i) in cell.colors"
+                      :key="i"
+                      class="event-dot"
+                      :style="{ background: color }"
+                    />
+                  </div>
+                </div>
+              </el-tooltip>
+              <template v-else>
+                <span class="cell-day">{{ cell.day }}</span>
+              </template>
             </div>
           </div>
-        </el-col>
-      </el-row>
-    </el-card>
 
-    <!-- 日历卡片 -->
-    <el-card class="calendar-card" shadow="hover">
-      <template #header>
-        <div class="calendar-header">
-          <el-button :icon="ArrowLeft" circle size="small" @click="prevMonth" />
-          <span class="calendar-title">{{ currentYear }} 年 {{ currentMonth }} 月</span>
-          <el-button :icon="ArrowRight" circle size="small" @click="nextMonth" />
-          <el-button size="small" @click="goToday" style="margin-left: 12px">今天</el-button>
-        </div>
-      </template>
-
-      <!-- 星期头 -->
-      <div class="calendar-grid">
-        <div class="calendar-weekday" v-for="d in ['日','一','二','三','四','五','六']" :key="d">{{ d }}</div>
-
-        <!-- 日期格子 -->
-        <div
-          v-for="(cell, idx) in calendarCells"
-          :key="idx"
-          class="calendar-cell"
-          :class="{
-            'is-today': cell.isToday,
-            'is-other-month': !cell.isCurrentMonth,
-            'has-events': cell.events.length > 0
-          }"
-        >
-          <el-tooltip
-            v-if="cell.events.length > 0"
-            placement="top"
-            :content="getEventTooltip(cell.events)"
-          >
-            <div class="cell-content">
-              <span class="cell-day">{{ cell.day }}</span>
-              <div class="cell-dots" v-if="cell.events.length > 0">
-                <span
-                  v-for="(color, i) in cell.colors"
-                  :key="i"
-                  class="event-dot"
-                  :style="{ background: color }"
-                />
-              </div>
-            </div>
-          </el-tooltip>
-          <template v-else>
-            <span class="cell-day">{{ cell.day }}</span>
-          </template>
-        </div>
-      </div>
-
-      <!-- 图例 -->
-      <div class="calendar-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#fa8c16"></span>社会化入住</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#fadb14"></span>五保入住</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#1890ff"></span>低保入住</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#52c41a"></span>请假</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#ff4d4f"></span>退住</span>
-      </div>
-    </el-card>
-
-    <!-- 图表区域 -->
-    <el-row :gutter="16" class="charts-row">
-      <el-col :span="14">
-        <el-card shadow="hover">
-          <template #header>
-            <span style="font-weight:600">近6个月收入趋势</span>
-          </template>
-          <div ref="revenueChartRef" style="height: 300px"></div>
+          <!-- 图例 -->
+          <div class="calendar-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#fa8c16"></span>社会化入住</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#fadb14"></span>五保入住</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#1890ff"></span>低保入住</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#52c41a"></span>请假</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#ff4d4f"></span>退住</span>
+          </div>
         </el-card>
       </el-col>
+
       <el-col :span="10">
-        <el-card shadow="hover">
+        <el-card class="pending-card" shadow="hover">
           <template #header>
-            <span style="font-weight:600">入住类别分布</span>
+            <div class="card-header">
+              <span>待办提醒</span>
+            </div>
           </template>
-          <div ref="categoryChartRef" style="height: 300px"></div>
+          <div class="pending-list" v-if="pendingSummary">
+            <div class="pending-item warn" @click="$router.push('/finance/payment')">
+              <div class="pending-icon"><el-icon :size="24"><Warning /></el-icon></div>
+              <div class="pending-info">
+                <div class="pending-count">{{ pendingSummary.feeWarningCount ?? 0 }}</div>
+                <div class="pending-label">费用预警</div>
+              </div>
+              <el-icon class="pending-arrow"><ArrowRight /></el-icon>
+            </div>
+            <div class="pending-item warn" @click="$router.push('/finance/reimbursement')">
+              <div class="pending-icon"><el-icon :size="24"><Tickets /></el-icon></div>
+              <div class="pending-info">
+                <div class="pending-count">{{ pendingSummary.pendingReimbursementCount ?? 0 }}</div>
+                <div class="pending-label">待审报账</div>
+              </div>
+              <el-icon class="pending-arrow"><ArrowRight /></el-icon>
+            </div>
+            <div class="pending-item info" @click="$router.push('/finance/voucher')">
+              <div class="pending-icon"><el-icon :size="24"><Document /></el-icon></div>
+              <div class="pending-info">
+                <div class="pending-count">{{ pendingSummary.pendingVoucherCount ?? 0 }}</div>
+                <div class="pending-label">待审凭证</div>
+              </div>
+              <el-icon class="pending-arrow"><ArrowRight /></el-icon>
+            </div>
+            <div class="pending-item danger" @click="$router.push('/pharmacy/drugs')">
+              <div class="pending-icon"><el-icon :size="24"><FirstAidKit /></el-icon></div>
+              <div class="pending-info">
+                <div class="pending-count">{{ pendingSummary.drugExpiryWarningCount ?? 0 }}</div>
+                <div class="pending-label">药品效期预警</div>
+              </div>
+              <el-icon class="pending-arrow"><ArrowRight /></el-icon>
+            </div>
+          </div>
+          <el-empty v-else description="暂无待办" :image-size="60" />
         </el-card>
       </el-col>
     </el-row>
 
-    <el-card class="welcome-card">
+    <!-- 快捷操作 -->
+    <el-card class="quick-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <span>欢迎使用养老企业管理系统</span>
+          <span>快捷操作</span>
         </div>
       </template>
-      <div class="welcome-content">
-        <p>当前用户：<strong>{{ authStore.user?.username || authStore.username || '未知' }}</strong></p>
-        <p>系统功能正在开发中，敬请期待...</p>
+      <div class="quick-actions">
+        <el-button type="primary" size="large" @click="$router.push('/finance/payment')">
+          <el-icon><Money /></el-icon> 登记收入
+        </el-button>
+        <el-button type="danger" size="large" @click="$router.push('/finance/payment')">
+          <el-icon><Wallet /></el-icon> 登记支出
+        </el-button>
+        <el-button type="success" size="large" @click="$router.push('/elderly/add')">
+          <el-icon><Plus /></el-icon> 新增老人
+        </el-button>
+        <el-button type="warning" size="large" @click="$router.push('/home-service/orders')">
+          <el-icon><Tickets /></el-icon> 服务工单
+        </el-button>
       </div>
-    </el-card>
-
-    <el-card class="permissions-card">
-      <template #header>
-        <div class="card-header">
-          <span>权限列表</span>
-        </div>
-      </template>
-      <div class="permissions-content" v-if="authStore.permissions?.length">
-        <el-tag 
-          v-for="p in authStore.permissions" 
-          :key="p" 
-          class="permission-tag"
-          type="info"
-        >
-          {{ p }}
-        </el-tag>
-      </div>
-      <el-empty v-else description="暂无权限数据" :image-size="80" />
     </el-card>
 
     <!-- 底部版权区域 -->
@@ -168,31 +167,71 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '../store/auth'
 import { api } from '../api/client'
-import { User, UserFilled, Money, Bell, ArrowLeft, ArrowRight, Warning, Document, Tickets, FirstAidKit } from '@element-plus/icons-vue'
+import {
+  User, UserFilled, Money, Wallet, Bell,
+  ArrowLeft, ArrowRight, Warning, Document, Tickets,
+  FirstAidKit, Plus, DataBoard
+} from '@element-plus/icons-vue'
 
 const authStore = useAuthStore()
 const feeWarnings = ref([])
 const pendingSummary = ref(null)
-const revenueChartRef = ref(null)
-const categoryChartRef = ref(null)
-let revenueChart = null
-let categoryChart = null
 let timer = null
-
-// ECharts lazy loading
-let echartsModule = null
-
-async function getEcharts() {
-  if (!echartsModule) {
-    echartsModule = await import('echarts')
-  }
-  return echartsModule
-}
 
 // 日历相关数据
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth() + 1)
 const calendarEvents = ref([])
+
+// 统计数据
+const stats = ref({
+  elderlyCount: 0,
+  staffCount: 0,
+  monthlyIncome: 0,
+  monthlyExpense: 0,
+  bedUsageRate: 0
+})
+
+// 5个渐变色统计卡片配置
+const statsCards = computed(() => [
+  {
+    title: '在住老人',
+    value: stats.value.elderlyCount,
+    icon: User,
+    gradient: 'linear-gradient(135deg, #1890ff, #36cfc9)'
+  },
+  {
+    title: '在职护工',
+    value: stats.value.staffCount,
+    icon: UserFilled,
+    gradient: 'linear-gradient(135deg, #52c41a, #95de64)'
+  },
+  {
+    title: '本月收入',
+    value: '¥' + (stats.value.monthlyIncome || 0).toLocaleString(),
+    icon: Money,
+    gradient: 'linear-gradient(135deg, #fa8c16, #ffc53d)'
+  },
+  {
+    title: '本月支出',
+    value: '¥' + (stats.value.monthlyExpense || 0).toLocaleString(),
+    icon: Wallet,
+    gradient: 'linear-gradient(135deg, #722ed1, #b37feb)'
+  },
+  {
+    title: '床位使用率',
+    value: (stats.value.bedUsageRate || 0) + '%',
+    icon: DataBoard,
+    gradient: 'linear-gradient(135deg, #13c2c2, #5cdbd3)'
+  }
+])
+
+// 费用预警滚动文本
+const warningText = computed(() => {
+  return feeWarnings.value
+    .map(w => `⚠ ${w.name} 余额剩余 ${w.remainingDays} 天`)
+    .join(' · ')
+})
 
 // 获取日历事件
 const loadCalendarEvents = async () => {
@@ -242,14 +281,13 @@ const getEventTooltip = (events) => {
 const calendarCells = computed(() => {
   const year = currentYear.value
   const month = currentMonth.value
-  const firstDay = new Date(year, month - 1, 1) // 本月1号
-  const startWeekday = firstDay.getDay() // 1号是周几
-  const daysInMonth = new Date(year, month, 0).getDate() // 本月天数
+  const firstDay = new Date(year, month - 1, 1)
+  const startWeekday = firstDay.getDay()
+  const daysInMonth = new Date(year, month, 0).getDate()
 
   const today = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-  // 事件按日期索引
   const eventsMap = {}
   calendarEvents.value.forEach(item => {
     eventsMap[item.date] = item.events
@@ -265,7 +303,7 @@ const calendarCells = computed(() => {
 
   // 本月
   for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
     const events = eventsMap[dateStr] || []
     const colorsSet = new Set()
     events.forEach(e => colorsSet.add(getEventColor(e)))
@@ -305,48 +343,7 @@ const goToday = () => {
   loadCalendarEvents()
 }
 
-// 统计数据
-const stats = ref({ 
-  elderlyCount: 0, 
-  staffCount: 0, 
-  monthlyIncome: 0, 
-  pendingTasks: 0 
-})
-
-// 统计卡片配置
-const statsCards = computed(() => [
-  {
-    title: '在住老人',
-    value: stats.value.elderlyCount,
-    icon: User,
-    gradient: 'linear-gradient(135deg, #1890ff, #36cfc9)'
-  },
-  {
-    title: '在职护工',
-    value: stats.value.staffCount,
-    icon: UserFilled,
-    gradient: 'linear-gradient(135deg, #52c41a, #95de64)'
-  },
-  {
-    title: '本月收入',
-    value: '¥' + (stats.value.monthlyIncome || 0).toLocaleString(),
-    icon: Money,
-    gradient: 'linear-gradient(135deg, #fa8c16, #ffc53d)'
-  },
-  {
-    title: '待处理',
-    value: stats.value.pendingTasks,
-    icon: Bell,
-    gradient: 'linear-gradient(135deg, #ff4d4f, #ff7875)'
-  }
-])
-
-const warningText = computed(() => {
-  return feeWarnings.value
-    .map(w => `⚠ ${w.name} 余额剩余 ${w.remainingDays} 天`)
-    .join(' · ')
-})
-
+// 加载费用预警
 async function fetchFeeWarnings() {
   try {
     const resp = await api.get('/api/dashboard/fee-warnings')
@@ -361,7 +358,7 @@ async function fetchFeeWarnings() {
   }
 }
 
-// 加载待处理事项汇总
+// 加载待办汇总
 async function loadPendingSummary() {
   try {
     const res = await api.get('/api/dashboard/pending-summary')
@@ -369,20 +366,9 @@ async function loadPendingSummary() {
       pendingSummary.value = res.data.data
     }
   } catch (e) {
-    console.warn('加载待处理事项失败', e)
+    console.warn('加载待办汇总失败', e)
   }
 }
-
-// 待处理事项配置
-const pendingItems = computed(() => {
-  if (!pendingSummary.value) return []
-  return [
-    { label: '费用预警', value: pendingSummary.value.feeWarningCount ?? 0, icon: Warning, cls: 'warn' },
-    { label: '待审报账', value: pendingSummary.value.pendingReimbursementCount ?? 0, icon: Tickets, cls: 'warn' },
-    { label: '待审凭证', value: pendingSummary.value.pendingVoucherCount ?? 0, icon: Document, cls: 'info' },
-    { label: '药品效期预警', value: pendingSummary.value.drugExpiryWarningCount ?? 0, icon: FirstAidKit, cls: 'danger' }
-  ]
-})
 
 // 加载统计数据
 async function loadStats() {
@@ -391,71 +377,9 @@ async function loadStats() {
     if (res.data?.code === 200) {
       stats.value = res.data.data
     }
-  } catch (e) { 
-    console.warn('加载统计数据失败', e) 
-  }
-}
-
-async function loadCharts() {
-  try {
-    const res = await api.get('/api/dashboard/charts')
-    if (res.data?.code === 200) {
-      const data = res.data.data
-      await renderRevenueChart(data.revenueTrend || [])
-      await renderCategoryChart(data.categoryDistribution || [])
-    }
   } catch (e) {
-    console.warn('加载图表数据失败', e)
+    console.warn('加载统计数据失败', e)
   }
-}
-
-async function renderRevenueChart(trend) {
-  if (!revenueChartRef.value) return
-  if (revenueChart) revenueChart.dispose()
-  const echarts = await getEcharts()
-  revenueChart = echarts.init(revenueChartRef.value)
-  const months = trend.map(t => t.month)
-  const amounts = trend.map(t => Number(t.amount) || 0)
-  revenueChart.setOption({
-    tooltip: { trigger: 'axis', formatter: '{b}<br/>收入：¥{c}' },
-    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    xAxis: { type: 'category', data: months, boundaryGap: false },
-    yAxis: { type: 'value', axisLabel: { formatter: '¥{value}' } },
-    series: [{
-      name: '月收入',
-      type: 'line',
-      smooth: true,
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-        { offset: 0, color: 'rgba(24,144,255,0.3)' },
-        { offset: 1, color: 'rgba(24,144,255,0.02)' }
-      ])},
-      lineStyle: { color: '#1890ff', width: 2 },
-      itemStyle: { color: '#1890ff' },
-      data: amounts
-    }]
-  })
-}
-
-async function renderCategoryChart(dist) {
-  if (!categoryChartRef.value) return
-  if (categoryChart) categoryChart.dispose()
-  const echarts = await getEcharts()
-  categoryChart = echarts.init(categoryChartRef.value)
-  const nameMap = { SOCIAL: '社会化', WU_BAO: '五保', LOW_BAO: '低保' }
-  const pieData = dist.map(d => ({ name: nameMap[d.category] || d.category, value: d.count }))
-  categoryChart.setOption({
-    tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
-    legend: { bottom: '5%', left: 'center' },
-    series: [{
-      type: 'pie',
-      radius: ['40%', '70%'],
-      avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
-      label: { show: true, formatter: '{b}\n{c}人' },
-      color: ['#fa8c16', '#fadb14', '#1890ff'],
-      data: pieData
-    }]
-  })
 }
 
 onMounted(async () => {
@@ -466,14 +390,11 @@ onMounted(async () => {
   await loadStats()
   await loadPendingSummary()
   await loadCalendarEvents()
-  await loadCharts()
   timer = setInterval(fetchFeeWarnings, 30000)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
-  if (revenueChart) revenueChart.dispose()
-  if (categoryChart) categoryChart.dispose()
 })
 </script>
 
@@ -482,6 +403,7 @@ onUnmounted(() => {
   padding: 16px;
 }
 
+/* 费用预警滚动条 */
 .warning-strip {
   height: 36px;
   background: #f56c6c;
@@ -508,12 +430,8 @@ onUnmounted(() => {
 }
 
 @keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
 }
 
 /* 统计卡片样式 */
@@ -553,89 +471,14 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
-.charts-row {
+/* 日历+待办 双栏布局 */
+.main-row {
   margin-bottom: 16px;
-}
-
-.welcome-card {
-  margin-bottom: 16px;
-}
-
-.card-header {
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.welcome-content p {
-  margin: 8px 0;
-  color: #606266;
-}
-
-.welcome-content strong {
-  color: #1890ff;
-}
-
-.permissions-content {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.permission-tag {
-  margin: 0;
-}
-
-/* 待处理事项区样式 */
-.pending-card {
-  margin-bottom: 16px;
-}
-
-.pending-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 8px;
-  background: #f5f7fa;
-  transition: transform 0.2s;
-}
-
-.pending-item:hover {
-  transform: translateY(-2px);
-}
-
-.pending-item.warn { border-left: 3px solid #fa8c16; }
-.pending-item.info { border-left: 3px solid #1890ff; }
-.pending-item.danger { border-left: 3px solid #ff4d4f; }
-
-.pending-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-}
-
-.pending-item.warn .pending-icon { background: #fff7e6; color: #fa8c16; }
-.pending-item.info .pending-icon { background: #e6f7ff; color: #1890ff; }
-.pending-item.danger .pending-icon { background: #fff1f0; color: #ff4d4f; }
-
-.pending-count {
-  font-size: 24px;
-  font-weight: 700;
-  color: #303133;
-}
-
-.pending-label {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 2px;
 }
 
 /* 日历样式 */
 .calendar-card {
-  margin-bottom: 16px;
+  min-height: 460px;
 }
 
 .calendar-header {
@@ -670,7 +513,7 @@ onUnmounted(() => {
 .calendar-cell {
   text-align: center;
   padding: 8px 4px;
-  min-height: 60px;
+  min-height: 50px;
   border-radius: 4px;
   cursor: default;
   transition: background 0.2s;
@@ -754,6 +597,94 @@ onUnmounted(() => {
   height: 10px;
   border-radius: 50%;
   display: inline-block;
+}
+
+/* 待办提醒样式 */
+.pending-card {
+  min-height: 460px;
+}
+
+.card-header {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f5f7fa;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.pending-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.pending-item.warn { border-left: 3px solid #fa8c16; }
+.pending-item.info { border-left: 3px solid #1890ff; }
+.pending-item.danger { border-left: 3px solid #ff4d4f; }
+
+.pending-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.pending-item.warn .pending-icon { background: #fff7e6; color: #fa8c16; }
+.pending-item.info .pending-icon { background: #e6f7ff; color: #1890ff; }
+.pending-item.danger .pending-icon { background: #fff1f0; color: #ff4d4f; }
+
+.pending-info {
+  flex: 1;
+}
+
+.pending-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.pending-label {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 2px;
+}
+
+.pending-arrow {
+  color: #c0c4cc;
+  font-size: 14px;
+}
+
+/* 快捷操作样式 */
+.quick-card {
+  margin-bottom: 16px;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.quick-actions .el-button {
+  min-width: 140px;
+  height: 48px;
+  font-size: 15px;
+  border-radius: 8px;
 }
 
 /* 底部版权区域 */

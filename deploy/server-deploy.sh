@@ -1,6 +1,6 @@
 #!/bin/bash
 # ========================================
-# 养老企业管理系统 v1.0.0 服务器部署脚本
+# 养老企业管理系统 v1.4.0 服务器部署脚本
 # 适用于: Ubuntu Server 24.04 LTS
 # ========================================
 
@@ -24,7 +24,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}养老企业管理系统 v1.0.0 部署脚本${NC}"
+echo -e "${GREEN}养老企业管理系统 v1.4.0 部署脚本${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 # 检查本地文件
@@ -32,7 +32,7 @@ echo ""
 echo -e "${YELLOW}检查本地构建产物...${NC}"
 
 # 检查后端JAR
-if [ ! -f "../backend/target/hfnew-backend-1.0.0.jar" ]; then
+if [ ! -f "../backend/target/hfnew-backend-1.4.0.jar" ]; then
     echo -e "${RED}错误: 后端JAR文件不存在${NC}"
     echo -e "${RED}请先运行: cd backend && mvn clean package -DskipTests${NC}"
     exit 1
@@ -54,7 +54,7 @@ echo -e "${YELLOW}部署配置:${NC}"
 echo -e "${YELLOW}========================================${NC}"
 echo "服务器IP: ${SSH_HOST}"
 echo "应用目录: ${REMOTE_APP_DIR}"
-echo "后端JAR: hfnew-backend-1.0.0.jar"
+echo "后端JAR: hfnew-backend-1.4.0.jar"
 echo "前端目录: dist/"
 echo ""
 read -p "确认部署? (yes/no): " confirm
@@ -120,7 +120,7 @@ echo -e "${YELLOW}上传新版本文件...${NC}"
 
 # 上传后端JAR
 echo "上传后端 JAR..."
-scp -P ${SERVER_PORT} "../backend/target/hfnew-backend-1.0.0.jar" ${SSH_USER}@${SSH_HOST}:${REMOTE_UPLOAD_DIR}/
+scp -P ${SERVER_PORT} "../backend/target/hfnew-backend-1.4.0.jar" ${SSH_USER}@${SSH_HOST}:${REMOTE_UPLOAD_DIR}/
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}后端JAR上传失败${NC}"
@@ -147,7 +147,7 @@ echo -e "${YELLOW}远程安装新版本...${NC}"
 INSTALL_SCRIPT="
 # 移动后端文件
 echo '安装后端...'
-mv '${REMOTE_UPLOAD_DIR}/hfnew-backend-1.0.0.jar' '${REMOTE_APP_DIR}/backend/'
+mv '${REMOTE_UPLOAD_DIR}/hfnew-backend-1.4.0.jar' '${REMOTE_APP_DIR}/backend/'
 
 # 移动前端文件
 echo '安装前端...'
@@ -156,7 +156,7 @@ cp -r '${REMOTE_UPLOAD_DIR}/dist/*' '${REMOTE_APP_DIR}/frontend/'
 # 设置权限
 echo '设置文件权限...'
 chown -R root:root '${REMOTE_APP_DIR}'
-chmod +x '${REMOTE_APP_DIR}/backend/hfnew-backend-1.0.0.jar'
+chmod +x '${REMOTE_APP_DIR}/backend/hfnew-backend-1.4.0.jar'
 chmod -R 755 '${REMOTE_APP_DIR}/frontend'
 
 # 清理上传目录
@@ -205,7 +205,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=${REMOTE_APP_DIR}/backend
-ExecStart=/usr/bin/java -jar ${REMOTE_APP_DIR}/backend/hfnew-backend-1.0.0.jar
+ExecStart=/usr/bin/java -jar ${REMOTE_APP_DIR}/backend/hfnew-backend-1.4.0.jar
 Restart=on-failure
 RestartSec=10
 
@@ -285,7 +285,7 @@ echo ""
 echo "注意事项:"
 echo "  1. 请登录服务器修改 ${REMOTE_APP_DIR}/backend.env 中的数据库密码和JWT密钥"
 echo "  2. 数据库密码修改后，重启后端服务: systemctl restart hfnew-backend.service"
-echo "  3. 数据库连接配置在: ${REMOTE_APP_DIR}/backend/hfnew-backend-1.0.0.jar 的 application.yml 中"
+echo "  3. 数据库连接配置在: ${REMOTE_APP_DIR}/backend/hfnew-backend-1.4.0.jar 的 application.yml 中"
 echo ""
 echo "查看服务状态:"
 echo "  后端: ssh ${SSH_USER}@${SSH_HOST} 'systemctl status hfnew-backend.service'"
