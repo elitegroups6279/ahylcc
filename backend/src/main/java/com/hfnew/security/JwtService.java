@@ -42,42 +42,50 @@ public class JwtService {
         return refreshTtlSeconds;
     }
 
-    public String createAccessToken(Long userId, String username, List<String> permissions, List<String> roles) {
+    public String createAccessToken(Long userId, String username, List<String> permissions, List<String> roles, Long orgId) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + accessTtlSeconds * 1000);
 
         SecretKey key = Keys.hmacShaKeyFor(accessSecret.getBytes(StandardCharsets.UTF_8));
 
+        Map<String, Object> claimsMap = new java.util.LinkedHashMap<>();
+        claimsMap.put("username", username);
+        claimsMap.put("perms", permissions);
+        claimsMap.put("roles", roles);
+        if (orgId != null) {
+            claimsMap.put("orgId", orgId);
+        }
+
         return Jwts.builder()
                 .issuer(issuer)
                 .issuedAt(now)
                 .expiration(exp)
                 .subject(String.valueOf(userId))
-                .claims(Map.of(
-                        "username", username,
-                        "perms", permissions,
-                        "roles", roles
-                ))
+                .claims(claimsMap)
                 .signWith(key)
                 .compact();
     }
 
-    public String createRefreshToken(Long userId, String username, List<String> permissions, List<String> roles) {
+    public String createRefreshToken(Long userId, String username, List<String> permissions, List<String> roles, Long orgId) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + refreshTtlSeconds * 1000);
 
         SecretKey key = Keys.hmacShaKeyFor(refreshSecret.getBytes(StandardCharsets.UTF_8));
 
+        Map<String, Object> claimsMap = new java.util.LinkedHashMap<>();
+        claimsMap.put("username", username);
+        claimsMap.put("perms", permissions);
+        claimsMap.put("roles", roles);
+        if (orgId != null) {
+            claimsMap.put("orgId", orgId);
+        }
+
         return Jwts.builder()
                 .issuer(issuer)
                 .issuedAt(now)
                 .expiration(exp)
                 .subject(String.valueOf(userId))
-                .claims(Map.of(
-                        "username", username,
-                        "perms", permissions,
-                        "roles", roles
-                ))
+                .claims(claimsMap)
                 .signWith(key)
                 .compact();
     }

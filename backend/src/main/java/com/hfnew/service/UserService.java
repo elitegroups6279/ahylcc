@@ -8,12 +8,15 @@ import com.hfnew.dto.system.*;
 import com.hfnew.entity.Role;
 import com.hfnew.entity.User;
 import com.hfnew.entity.UserRole;
+import com.hfnew.entity.Organization;
 import com.hfnew.exception.BizException;
 import com.hfnew.mapper.RoleMapper;
 import com.hfnew.mapper.UserMapper;
 import com.hfnew.mapper.UserRoleMapper;
+import com.hfnew.mapper.OrganizationMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +37,9 @@ public class UserService {
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
+    private final OrganizationMapper organizationMapper;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * 分页查询用户列表
@@ -75,12 +80,27 @@ public class UserService {
      */
     @Transactional
     public Long createUser(AccountCreateRequest request) {
-        // 检查用户名是否已存在
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, request.getUsername());
-        if (userMapper.selectCount(wrapper) > 0) {
+        // 检查活跃用户名是否已存在
+        long activeCount = userMapper.selectCount(
+                new LambdaQueryWrapper<User>()
+                        .eq(User::getUsername, request.getUsername())
+                        .eq(User::getDeleted, 0));
+        if (activeCount > 0) {
             throw new BizException(400, 400, "用户名已存在");
         }
+
+        // 物理删除该用户名下的软删除记录及其角色绑定，避免唯一约束冲突
+        log.info("jdbcTemplate class: {}", jdbcTemplate.getClass().getName());
+        int rolesDeleted = jdbcTemplate.update(
+            "DELETE ur FROM t_user_role ur INNER JOIN t_user u ON ur.user_id = u.id WHERE u.username = ? AND u.deleted = 1",
+            request.getUsername()
+        );
+        log.info("Physical delete roles for username={}: rowsAffected={}", request.getUsername(), rolesDeleted);
+        int usersDeleted = jdbcTemplate.update(
+            "DELETE FROM t_user WHERE username = ? AND deleted = 1",
+            request.getUsername()
+        );
+        log.info("Physical delete user for username={}: rowsAffected={}", request.getUsername(), usersDeleted);
 
         User user = new User();
         user.setUsername(request.getUsername());
@@ -89,6 +109,7 @@ public class UserService {
         user.setPhone(request.getPhone());
         user.setEmail(request.getEmail());
         user.setStatus(1);
+        user.setOrgId(request.getOrgId());
         userMapper.insert(user);
 
         // 绑定角色
@@ -126,6 +147,9 @@ public class UserService {
         }
         if (request.getStatus() != null) {
             user.setStatus(request.getStatus());
+        }
+        if (request.getOrgId() != null) {
+            user.setOrgId(request.getOrgId());
         }
         userMapper.updateById(user);
 
@@ -236,6 +260,15 @@ public class UserService {
         vo.setLastLoginTime(user.getLastLoginTime());
         vo.setLastLoginIp(user.getLastLoginIp());
         vo.setCreateTime(user.getCreateTime());
+
+        // 设置机构信息
+        vo.setOrgId(user.getOrgId());
+        if (user.getOrgId() != null) {
+            Organization org = organizationMapper.selectById(user.getOrgId());
+            if (org != null) {
+                vo.setOrgName(org.getOrgName());
+            }
+        }
 
         // 获取用户角色
         List<Role> roles = getRolesByUserId(user.getId());

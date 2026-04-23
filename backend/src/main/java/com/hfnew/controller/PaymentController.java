@@ -10,6 +10,7 @@ import com.hfnew.security.AuthUserPrincipal;
 import com.hfnew.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +42,14 @@ public class PaymentController {
     public ResponseEntity<ApiResponse<Long>> create(@RequestBody PaymentCreateRequest request) {
         Long id = paymentService.create(getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.success(id));
+    }
+
+    @DeleteMapping("/api/finance/payments/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @OpLog(module = "收支管理", operation = "删除收入")
+    public ResponseEntity<ApiResponse<Void>> deletePayment(@PathVariable Long id) {
+        paymentService.deletePayment(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     private Long getCurrentUserId() {

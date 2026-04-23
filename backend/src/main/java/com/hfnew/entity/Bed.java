@@ -29,6 +29,9 @@ public class Bed {
 
     private String description;
 
+        @TableField(fill = FieldFill.INSERT)
+        private Long orgId;
+
     @TableLogic
     private Integer deleted;
 

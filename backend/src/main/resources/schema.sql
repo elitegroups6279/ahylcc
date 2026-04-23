@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS t_user (
   status TINYINT DEFAULT 1 COMMENT '1启用 0停用',
   last_login_time DATETIME,
   last_login_ip VARCHAR(50),
+  org_id BIGINT COMMENT '所属机构ID(NULL=超级管理员)',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -69,6 +70,20 @@ CREATE TABLE IF NOT EXISTS t_role_menu (
   UNIQUE(role_id, menu_id)
 );
 
+-- t_organization: 机构表
+CREATE TABLE IF NOT EXISTS t_organization (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  org_code VARCHAR(50) NOT NULL UNIQUE COMMENT '机构编码',
+  org_name VARCHAR(100) NOT NULL COMMENT '机构名称',
+  address VARCHAR(300) COMMENT '地址',
+  phone VARCHAR(50) COMMENT '联系电话',
+  contact_person VARCHAR(50) COMMENT '联系人',
+  status TINYINT DEFAULT 1 COMMENT '1=启用 0=停用',
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) COMMENT '机构表';
+
 -- ========================================
 -- 业务表 - 入住管理
 -- ========================================
@@ -82,6 +97,7 @@ CREATE TABLE IF NOT EXISTS t_bed (
   bed_number VARCHAR(20) NOT NULL COMMENT '床位号',
   status TINYINT DEFAULT 0 COMMENT '0空闲 1占用 2维修',
   description VARCHAR(200),
+  org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -121,6 +137,7 @@ CREATE TABLE IF NOT EXISTS t_elderly (
   status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE在住/DISCHARGED退住/ON_LEAVE请假中',
   discharge_date DATE,
   discharge_reason VARCHAR(200),
+  org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -168,6 +185,7 @@ CREATE TABLE IF NOT EXISTS t_staff (
   has_caregiver_cert TINYINT DEFAULT 0 COMMENT '是否有护工证：0=无，1=有',
   has_health_cert TINYINT DEFAULT 0 COMMENT '是否有健康证：0=无，1=有',
   position_type VARCHAR(20) DEFAULT 'CAREGIVER',
+  org_id BIGINT COMMENT '所属机构ID',
   status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE在职/RESIGNED离职',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -227,6 +245,7 @@ CREATE TABLE IF NOT EXISTS t_fee_account (
   total_consumed DECIMAL(12,2) DEFAULT 0 COMMENT '累计消费',
   carry_over DECIMAL(10,2) DEFAULT 0 COMMENT '顺延金额',
   warning_status TINYINT DEFAULT 0 COMMENT '0正常 1预警',
+  org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -252,6 +271,7 @@ CREATE TABLE IF NOT EXISTS t_fee_bill (
   family_payable DECIMAL(12,2) DEFAULT 0 COMMENT '家属应缴',
   gov_payable DECIMAL(12,2) DEFAULT 0 COMMENT '政府应拨',
   subsidy_detail TEXT COMMENT '补贴明细JSON',
+  org_id BIGINT COMMENT '所属机构ID',
   status VARCHAR(20) DEFAULT 'DRAFT' COMMENT 'DRAFT草稿/CONFIRMED已确认/SETTLED已结清',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -272,6 +292,7 @@ CREATE TABLE IF NOT EXISTS t_payment_record (
   operator_id BIGINT COMMENT '操作员ID',
   payment_date DATE COMMENT '缴费时间',
   remark VARCHAR(200),
+  org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP

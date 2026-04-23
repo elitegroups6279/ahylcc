@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +24,8 @@ public class MybatisPlusConfig {
         String url = env.getProperty("spring.datasource.url", "");
         DbType dbType = url.startsWith("jdbc:mysql") ? DbType.MYSQL : DbType.H2;
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        // Tenant (org_id) interceptor MUST be added BEFORE pagination interceptor
+        interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(new OrgTenantHandler()));
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(dbType));
         return interceptor;
     }
@@ -37,6 +40,8 @@ public class MybatisPlusConfig {
         public void insertFill(MetaObject metaObject) {
             this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, LocalDateTime.now());
             this.strictInsertFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
+            // Auto-fill org_id from current user context; falls back to DEFAULT_ORG_ID for super admin
+            this.strictInsertFill(metaObject, "orgId", Long.class, OrgContextHolder.getEffectiveOrgId());
         }
 
         @Override

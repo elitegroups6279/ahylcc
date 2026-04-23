@@ -13,12 +13,14 @@ public class AuthUserPrincipal implements UserDetails {
     private final String username;
     private final List<String> permissions;
     private final List<String> roles;
+    private final Long orgId;
 
-    public AuthUserPrincipal(Long userId, String username, List<String> permissions, List<String> roles) {
+    public AuthUserPrincipal(Long userId, String username, List<String> permissions, List<String> roles, Long orgId) {
         this.userId = userId;
         this.username = username;
         this.permissions = permissions;
         this.roles = roles;
+        this.orgId = orgId;
     }
 
     public Long getUserId() {
@@ -37,10 +39,21 @@ public class AuthUserPrincipal implements UserDetails {
         return roles;
     }
 
+    public Long getOrgId() {
+        return orgId;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // 以 permissions 字符串作为 Spring Security 的 authority
-        return permissions.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+        // permissions 作为 authority，roles 以 ROLE_ 前缀作为 authority，以支持 @PreAuthorize("hasRole('ADMIN')")
+        List<GrantedAuthority> authorities = new java.util.ArrayList<>();
+        for (String perm : permissions) {
+            authorities.add(new SimpleGrantedAuthority(perm));
+        }
+        for (String role : roles) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+        }
+        return authorities;
     }
 
     @Override

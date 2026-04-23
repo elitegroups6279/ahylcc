@@ -57,4 +57,14 @@ public class AccountVO {
      * 创建时间
      */
     private LocalDateTime createTime;
+
+    /**
+     * 所属机构ID
+     */
+    private Long orgId;
+
+    /**
+     * 所属机构名称
+     */
+    private String orgName;
 }

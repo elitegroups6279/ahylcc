@@ -2,6 +2,8 @@ package com.hfnew.controller;
 
 import com.hfnew.common.ApiResponse;
 import com.hfnew.dto.auth.*;
+import com.hfnew.entity.Organization;
+import com.hfnew.mapper.OrganizationMapper;
 import com.hfnew.security.AuthUserPrincipal;
 import com.hfnew.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,9 +17,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService authService;
+    private final OrganizationMapper organizationMapper;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, OrganizationMapper organizationMapper) {
         this.authService = authService;
+        this.organizationMapper = organizationMapper;
     }
 
     @PostMapping("/login")
@@ -57,6 +61,13 @@ public class AuthController {
         me.setUsername(p.getUsername());
         me.setRoles(p.getRoles());
         me.setPermissions(p.getPermissions());
+        me.setOrgId(p.getOrgId());
+        if (p.getOrgId() != null) {
+            Organization org = organizationMapper.selectById(p.getOrgId());
+            if (org != null) {
+                me.setOrgName(org.getOrgName());
+            }
+        }
         return ResponseEntity.ok(ApiResponse.success(me));
     }
 

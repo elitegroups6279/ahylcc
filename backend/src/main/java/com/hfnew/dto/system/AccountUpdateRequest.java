@@ -34,4 +34,9 @@ public class AccountUpdateRequest {
      * 角色ID列表
      */
     private List<Long> roleIds;
+
+    /**
+     * 所属机构ID
+     */
+    private Long orgId;
 }

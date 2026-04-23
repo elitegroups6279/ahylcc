@@ -52,6 +52,9 @@ public class FeeBill {
 
     private String subsidyDetail;
 
+        @TableField(fill = FieldFill.INSERT)
+        private Long orgId;
+
     private String status;
 
     @TableLogic

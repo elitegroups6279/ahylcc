@@ -61,6 +61,9 @@ public class Staff {
 
     private String positionType;
 
+        @TableField(fill = FieldFill.INSERT)
+        private Long orgId;
+
     private String status;
 
     @TableLogic

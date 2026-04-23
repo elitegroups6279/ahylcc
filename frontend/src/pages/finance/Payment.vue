@@ -82,6 +82,15 @@
         <el-table-column prop="paymentDate" label="缴费时间" width="120" />
         <el-table-column prop="createTime" label="记录时间" width="180" />
         <el-table-column prop="remark" label="备注" />
+        <el-table-column v-if="isAdmin" label="操作" width="80">
+          <template #default="{ row }">
+            <el-popconfirm title="确定删除该收入记录?" @confirm="deleteIncome(row.id)">
+              <template #reference>
+                <el-button type="danger" link size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
       </el-table>
 
       <!-- 分页 -->
@@ -141,7 +150,7 @@
         <el-table-column prop="expenseDate" label="日期" width="120" />
         <el-table-column prop="description" label="说明" />
         <el-table-column prop="operatorName" label="操作员" width="100" />
-        <el-table-column label="操作" width="80">
+        <el-table-column v-if="isAdmin" label="操作" width="80">
           <template #default="{ row }">
             <el-popconfirm title="确定删除?" @confirm="deleteExpense(row.id)">
               <template #reference>
@@ -259,8 +268,15 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { api as client } from '../../api/client'
+import { useAuthStore } from '../../store/auth'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => {
+  const roles = authStore.user?.roles || authStore.userInfo?.roles || []
+  return roles.includes('ADMIN') || roles.includes('SUPER_ADMIN')
+})
 
 // 数据映射
 const paymentMethodMap = { CASH: '现金', TRANSFER: '转账', POS: 'POS刷卡' }
@@ -547,6 +563,20 @@ async function submitExpense() {
     ElMessage.error(e.message || '保存失败')
   } finally {
     expenseSaving.value = false
+  }
+}
+
+// 删除收入
+async function deleteIncome(id) {
+  try {
+    const resp = await client.delete('/api/finance/payments/' + id)
+    const body = resp.data
+    if (body.code !== 200) throw new Error(body.msg || '删除失败')
+    ElMessage.success('删除成功')
+    await loadIncome()
+    await loadSummary()
+  } catch (e) {
+    ElMessage.error(e.message || '删除失败')
   }
 }
 

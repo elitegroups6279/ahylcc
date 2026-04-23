@@ -3,19 +3,21 @@
     <el-card>
       <template #header>
         <div class="header">
-          <span>角色管理</span>
+          <span>机构管理</span>
           <div class="header-actions">
-            <el-input v-model="keyword" placeholder="角色名称/编码" clearable style="width: 220px" @keyup.enter="reload" />
-            <el-button type="primary" @click="openCreate">新增角色</el-button>
+            <el-input v-model="keyword" placeholder="机构名称/编码/联系人" clearable style="width: 260px" @keyup.enter="reload" />
+            <el-button type="primary" @click="openCreate">新增机构</el-button>
           </div>
         </div>
       </template>
 
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="roleName" label="角色名称" width="180" />
-        <el-table-column prop="roleCode" label="角色编码" width="180" />
-        <el-table-column prop="description" label="描述" min-width="220" />
+        <el-table-column prop="orgCode" label="机构编码" width="140" />
+        <el-table-column prop="orgName" label="机构名称" width="180" />
+        <el-table-column prop="address" label="地址" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="phone" label="联系电话" width="140" />
+        <el-table-column prop="contactPerson" label="联系人" width="100" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">
@@ -45,36 +47,28 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '新增角色' : '编辑角色'" width="620px" @closed="onDialogClose">
+    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '新增机构' : '编辑机构'" width="560px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
-        <el-form-item label="名称" prop="roleName">
-          <el-input v-model="form.roleName" placeholder="请输入角色名称" />
+        <el-form-item label="机构编码" prop="orgCode">
+          <el-input v-model="form.orgCode" placeholder="请输入机构编码" :disabled="dialogMode === 'edit'" />
         </el-form-item>
-        <el-form-item label="编码" prop="roleCode">
-          <el-input v-model="form.roleCode" placeholder="请输入角色编码" :disabled="dialogMode === 'edit'" />
+        <el-form-item label="机构名称" prop="orgName">
+          <el-input v-model="form.orgName" placeholder="请输入机构名称" />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入描述" />
+        <el-form-item label="地址" prop="address">
+          <el-input v-model="form.address" placeholder="请输入地址" />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
+        <el-form-item label="联系电话" prop="phone">
+          <el-input v-model="form.phone" placeholder="请输入联系电话" />
+        </el-form-item>
+        <el-form-item label="联系人" prop="contactPerson">
+          <el-input v-model="form.contactPerson" placeholder="请输入联系人" />
+        </el-form-item>
+        <el-form-item v-if="dialogMode === 'edit'" label="状态" prop="status">
           <el-radio-group v-model="form.status">
             <el-radio :value="1">启用</el-radio>
             <el-radio :value="0">停用</el-radio>
           </el-radio-group>
-        </el-form-item>
-        <el-form-item label="菜单权限" prop="menuIds">
-          <el-card shadow="never" class="menu-tree-card">
-            <el-tree
-              ref="menuTreeRef"
-              :data="menuTree"
-              node-key="id"
-              :props="{ label: 'menuName', children: 'children' }"
-              show-checkbox
-              check-strictly
-              :default-expand-all="false"
-              :expand-on-click-node="false"
-            />
-          </el-card>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -86,7 +80,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, nextTick } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../api/client'
 
@@ -101,27 +95,26 @@ const keyword = ref('')
 const dialogVisible = ref(false)
 const dialogMode = ref('create')
 const formRef = ref()
-const menuTreeRef = ref()
-const menuTree = ref([])
 
 const form = reactive({
   id: null,
-  roleName: '',
-  roleCode: '',
-  description: '',
-  status: 1,
-  menuIds: []
+  orgCode: '',
+  orgName: '',
+  address: '',
+  phone: '',
+  contactPerson: '',
+  status: 1
 })
 
 const rules = {
-  roleName: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-  roleCode: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
+  orgCode: [{ required: true, message: '请输入机构编码', trigger: 'blur' }],
+  orgName: [{ required: true, message: '请输入机构名称', trigger: 'blur' }]
 }
 
 async function fetchList() {
   loading.value = true
   try {
-    const resp = await api.get('/api/system/roles', {
+    const resp = await api.get('/api/system/organizations', {
       params: { page: page.value, pageSize: pageSize.value, keyword: keyword.value || undefined }
     })
     const body = resp.data
@@ -135,29 +128,14 @@ async function fetchList() {
   }
 }
 
-async function fetchMenuTree() {
-  try {
-    const resp = await api.get('/api/system/menus/tree')
-    const body = resp.data
-    if (body.code === 200) {
-      menuTree.value = body.data || []
-    }
-  } catch (e) {
-    console.warn('获取菜单树失败', e)
-    menuTree.value = []
-  }
-}
-
 function resetForm() {
   form.id = null
-  form.roleName = ''
-  form.roleCode = ''
-  form.description = ''
+  form.orgCode = ''
+  form.orgName = ''
+  form.address = ''
+  form.phone = ''
+  form.contactPerson = ''
   form.status = 1
-  form.menuIds = []
-  if (menuTreeRef.value) {
-    menuTreeRef.value.setCheckedKeys([])
-  }
 }
 
 function openCreate() {
@@ -170,29 +148,20 @@ async function openEdit(row) {
   dialogMode.value = 'edit'
   resetForm()
   try {
-    const resp = await api.get(`/api/system/roles/${row.id}`)
+    const resp = await api.get(`/api/system/organizations/${row.id}`)
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '加载详情失败')
     const data = body.data
     form.id = data.id
-    form.roleName = data.roleName || ''
-    form.roleCode = data.roleCode || ''
-    form.description = data.description || ''
+    form.orgCode = data.orgCode || ''
+    form.orgName = data.orgName || ''
+    form.address = data.address || ''
+    form.phone = data.phone || ''
+    form.contactPerson = data.contactPerson || ''
     form.status = data.status ?? 1
-    form.menuIds = data.menuIds || []
     dialogVisible.value = true
-    await nextTick()
-    if (menuTreeRef.value) {
-      menuTreeRef.value.setCheckedKeys(form.menuIds)
-    }
   } catch (e) {
     ElMessage.error(e.message || '加载详情失败')
-  }
-}
-
-function onDialogClose() {
-  if (menuTreeRef.value) {
-    menuTreeRef.value.setCheckedKeys([])
   }
 }
 
@@ -200,30 +169,26 @@ async function submit() {
   if (!formRef.value) return
   await formRef.value.validate()
 
-  const checkedKeys = menuTreeRef.value ? menuTreeRef.value.getCheckedKeys() : []
-  const halfCheckedKeys = menuTreeRef.value ? menuTreeRef.value.getHalfCheckedKeys() : []
-  const menuIds = [...checkedKeys, ...halfCheckedKeys]
-
   saving.value = true
   try {
     if (dialogMode.value === 'create') {
-      const resp = await api.post('/api/system/roles', {
-        roleName: form.roleName,
-        roleCode: form.roleCode,
-        description: form.description,
-        status: form.status,
-        menuIds: menuIds
+      const resp = await api.post('/api/system/organizations', {
+        orgCode: form.orgCode,
+        orgName: form.orgName,
+        address: form.address,
+        phone: form.phone,
+        contactPerson: form.contactPerson
       })
       const body = resp.data
       if (body.code !== 200) throw new Error(body.msg || '创建失败')
       ElMessage.success('创建成功')
     } else {
-      const resp = await api.put(`/api/system/roles/${form.id}`, {
-        roleName: form.roleName,
-        roleCode: form.roleCode,
-        description: form.description,
-        status: form.status,
-        menuIds: menuIds
+      const resp = await api.put(`/api/system/organizations/${form.id}`, {
+        orgName: form.orgName,
+        address: form.address,
+        phone: form.phone,
+        contactPerson: form.contactPerson,
+        status: form.status
       })
       const body = resp.data
       if (body.code !== 200) throw new Error(body.msg || '更新失败')
@@ -240,12 +205,12 @@ async function submit() {
 
 async function remove(row) {
   try {
-    await ElMessageBox.confirm(`确定删除角色【${row.roleName}】吗？`, '提示', {
+    await ElMessageBox.confirm(`确定删除机构【${row.orgName}】吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const resp = await api.delete(`/api/system/roles/${row.id}`)
+    const resp = await api.delete(`/api/system/organizations/${row.id}`)
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '删除失败')
     ElMessage.success('删除成功')
@@ -263,7 +228,6 @@ function reload() {
 
 onMounted(() => {
   fetchList()
-  fetchMenuTree()
 })
 </script>
 
@@ -288,14 +252,5 @@ onMounted(() => {
   margin-top: 14px;
   display: flex;
   justify-content: flex-end;
-}
-
-.menu-tree-card {
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.menu-tree-card :deep(.el-card__body) {
-  padding: 12px;
 }
 </style>

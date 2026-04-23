@@ -6,44 +6,39 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 系统用户实体
+ * 机构实体
  */
 @Data
-@TableName("t_user")
-public class User {
+@TableName("t_organization")
+public class Organization {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
     /**
-     * 用户名
+     * 机构编码
      */
-    private String username;
+    private String orgCode;
 
     /**
-     * 密码（BCrypt加密）
+     * 机构名称
      */
-    private String password;
+    private String orgName;
 
     /**
-     * 真实姓名
+     * 地址
      */
-    private String realName;
+    private String address;
 
     /**
-     * 手机号
+     * 联系电话
      */
     private String phone;
 
     /**
-     * 邮箱
+     * 联系人
      */
-    private String email;
-
-    /**
-     * 头像URL
-     */
-    private String avatar;
+    private String contactPerson;
 
     /**
      * 状态：1启用 0停用
@@ -51,25 +46,10 @@ public class User {
     private Integer status;
 
     /**
-     * 最后登录时间
-     */
-    private LocalDateTime lastLoginTime;
-
-    /**
-     * 最后登录IP
-     */
-    private String lastLoginIp;
-
-    /**
-     * 逻辑删除：0未删除 1已删除
+     * 逻辑删除
      */
     @TableLogic
     private Integer deleted;
-
-    /**
-     * 所属机构ID（NULL=超级管理员）
-     */
-    private Long orgId;
 
     /**
      * 创建时间

@@ -9,6 +9,7 @@ import com.hfnew.security.AuthUserPrincipal;
 import com.hfnew.service.ExpenseRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +41,7 @@ public class ExpenseController {
     }
 
     @DeleteMapping("/api/finance/expenses/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @OpLog(module = "收支管理", operation = "删除支出")
     public ResponseEntity<ApiResponse<Object>> delete(@PathVariable Long id) {
         expenseRecordService.delete(id);

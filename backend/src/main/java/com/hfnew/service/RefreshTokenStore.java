@@ -15,22 +15,24 @@ public class RefreshTokenStore {
         private final String username;
         private final List<String> permissions;
         private final List<String> roles;
+        private final Long orgId;
         private final Date expiresAt;
 
-        private RefreshRecord(Long userId, String username, List<String> permissions, List<String> roles, Date expiresAt) {
+        private RefreshRecord(Long userId, String username, List<String> permissions, List<String> roles, Long orgId, Date expiresAt) {
             this.userId = userId;
             this.username = username;
             this.permissions = permissions;
             this.roles = roles;
+            this.orgId = orgId;
             this.expiresAt = expiresAt;
         }
     }
 
     private final Map<String, RefreshRecord> store = new ConcurrentHashMap<>();
 
-    public void put(String refreshToken, Long userId, String username, List<String> permissions, List<String> roles, long ttlMillis) {
+    public void put(String refreshToken, Long userId, String username, List<String> permissions, List<String> roles, Long orgId, long ttlMillis) {
         Date expiresAt = new Date(System.currentTimeMillis() + ttlMillis);
-        store.put(refreshToken, new RefreshRecord(userId, username, permissions, roles, expiresAt));
+        store.put(refreshToken, new RefreshRecord(userId, username, permissions, roles, orgId, expiresAt));
     }
 
     public RefreshTokenInfo getValid(String refreshToken) {
@@ -40,7 +42,7 @@ public class RefreshTokenStore {
             store.remove(refreshToken);
             return null;
         }
-        return new RefreshTokenInfo(rec.userId, rec.username, rec.permissions, rec.roles);
+        return new RefreshTokenInfo(rec.userId, rec.username, rec.permissions, rec.roles, rec.orgId);
     }
 
     public void remove(String refreshToken) {
@@ -53,7 +55,7 @@ public class RefreshTokenStore {
         store.entrySet().removeIf(e -> e.getValue().userId.equals(userId));
     }
 
-    public record RefreshTokenInfo(Long userId, String username, List<String> permissions, List<String> roles) {
+    public record RefreshTokenInfo(Long userId, String username, List<String> permissions, List<String> roles, Long orgId) {
     }
 }
 

@@ -17,6 +17,11 @@
         <el-table-column prop="realName" label="姓名" width="140" />
         <el-table-column prop="phone" label="手机号" width="140" />
         <el-table-column prop="email" label="邮箱" min-width="180" />
+        <el-table-column label="所属机构" min-width="140">
+          <template #default="{ row }">
+            {{ row.orgName || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="角色" min-width="200">
           <template #default="{ row }">
             <el-tag v-for="r in (row.roles || [])" :key="r.id" size="small" style="margin-right: 6px">
@@ -78,6 +83,11 @@
             <el-option v-for="r in roleOptions" :key="r.id" :label="r.roleName" :value="r.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="所属机构" prop="orgId">
+          <el-select v-model="form.orgId" filterable allow-create clearable default-first-option placeholder="请选择或输入机构名称" style="width: 100%">
+            <el-option v-for="o in orgOptions" :key="o.id" :label="o.orgName" :value="o.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态" prop="status" v-if="dialogMode === 'edit'">
           <el-radio-group v-model="form.status">
             <el-radio :value="1">启用</el-radio>
@@ -122,6 +132,7 @@ const dialogVisible = ref(false)
 const dialogMode = ref('create')
 const formRef = ref()
 const roleOptions = ref([])
+const orgOptions = ref([])
 const form = reactive({
   id: null,
   username: '',
@@ -130,7 +141,8 @@ const form = reactive({
   phone: '',
   email: '',
   status: 1,
-  roleIds: []
+  roleIds: [],
+  orgId: null
 })
 
 const rules = {
@@ -152,6 +164,18 @@ async function fetchRoles() {
   const body = resp.data
   if (body.code !== 200) throw new Error(body.msg || '获取角色失败')
   roleOptions.value = body.data || []
+}
+
+async function fetchOrgs() {
+  try {
+    const resp = await api.get('/api/system/organizations/all')
+    const body = resp.data
+    if (body.code !== 200) throw new Error(body.msg || '获取机构失败')
+    orgOptions.value = body.data || []
+  } catch (e) {
+    console.warn('获取机构列表失败', e)
+    orgOptions.value = []
+  }
 }
 
 async function fetchList() {
@@ -180,19 +204,20 @@ function resetForm() {
   form.email = ''
   form.status = 1
   form.roleIds = []
+  form.orgId = null
 }
 
 async function openCreate() {
   dialogMode.value = 'create'
   resetForm()
-  await fetchRoles()
+  await Promise.all([fetchRoles(), fetchOrgs()])
   dialogVisible.value = true
 }
 
 async function openEdit(row) {
   dialogMode.value = 'edit'
   resetForm()
-  await fetchRoles()
+  await Promise.all([fetchRoles(), fetchOrgs()])
   try {
     const resp = await api.get(`/api/system/accounts/${row.id}`)
     const body = resp.data
@@ -204,6 +229,7 @@ async function openEdit(row) {
     form.email = data.email || ''
     form.status = data.status ?? 1
     form.roleIds = (data.roles || []).map(r => r.id)
+    form.orgId = data.orgId || null
     dialogVisible.value = true
   } catch (e) {
     ElMessage.error(e.message || '加载详情失败')
@@ -215,6 +241,23 @@ async function submit() {
   await formRef.value.validate()
   saving.value = true
   try {
+    // If orgId is a string (user typed new org name), first try to match existing org by name
+    if (typeof form.orgId === 'string' && form.orgId.trim()) {
+      const trimmed = form.orgId.trim()
+      const matched = orgOptions.value.find(o => o.orgName === trimmed)
+      if (matched) {
+        form.orgId = matched.id
+      } else {
+        const orgResp = await api.post('/api/system/organizations', {
+          orgCode: trimmed.replace(/\s+/g, '_'),
+          orgName: trimmed
+        })
+        const orgBody = orgResp.data
+        if (orgBody.code !== 200) throw new Error(orgBody.msg || '创建机构失败')
+        form.orgId = orgBody.data
+        await fetchOrgs()
+      }
+    }
     if (dialogMode.value === 'create') {
       const payload = {
         username: form.username,
@@ -222,7 +265,8 @@ async function submit() {
         realName: form.realName,
         phone: form.phone,
         email: form.email,
-        roleIds: form.roleIds
+        roleIds: form.roleIds,
+        orgId: form.orgId
       }
       const resp = await api.post('/api/system/accounts', payload)
       const body = resp.data
@@ -234,7 +278,8 @@ async function submit() {
         phone: form.phone,
         email: form.email,
         status: form.status,
-        roleIds: form.roleIds
+        roleIds: form.roleIds,
+        orgId: form.orgId
       }
       const resp = await api.put(`/api/system/accounts/${form.id}`, payload)
       const body = resp.data

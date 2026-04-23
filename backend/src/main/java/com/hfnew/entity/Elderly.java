@@ -81,6 +81,9 @@ public class Elderly {
 
     private String dischargeReason;
 
+    @TableField(fill = FieldFill.INSERT)
+    private Long orgId;
+
     @TableLogic
     private Integer deleted;
 

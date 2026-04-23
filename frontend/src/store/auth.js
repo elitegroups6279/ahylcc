@@ -139,6 +139,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     username: (state) => state.user?.username || state.userInfo?.username || '',
+    orgId: (state) => state.user?.orgId || state.userInfo?.orgId || null,
     // 侧边栏菜单：仅返回菜单(M)和目录(C)类型，不含按钮(B)
     sidebarMenus: (state) => {
       const filterMenus = (menus) => {
@@ -154,8 +155,8 @@ export const useAuthStore = defineStore('auth', {
             return ao - bo
           })
       }
-      const menus = state.menuTree.length > 0 ? state.menuTree : fallbackMenus
-      return filterMenus(menus)
+      // 不再使用兜底菜单：未分配菜单的用户不应看到任何菜单
+      return filterMenus(state.menuTree)
     }
   },
 
@@ -190,6 +191,10 @@ export const useAuthStore = defineStore('auth', {
       // 登录后立即拉取权限和菜单
       await this.fetchPermissions()
       await this.fetchMenuTree()
+      // 如果登录响应中没有orgId，尝试从/me获取
+      if (!this.user?.orgId) {
+        await this.fetchUserInfo()
+      }
       return this.user
     },
 

@@ -31,6 +31,7 @@ CREATE TABLE t_user (
   status TINYINT DEFAULT 1 COMMENT '1启用 0停用',
   last_login_time DATETIME,
   last_login_ip VARCHAR(50),
+  org_id BIGINT COMMENT '所属机构ID(NULL=超级管理员)',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -86,6 +87,21 @@ CREATE TABLE t_role_menu (
   UNIQUE (role_id, menu_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色-菜单关联';
 
+-- t_organization: 机构表
+DROP TABLE IF EXISTS t_organization;
+CREATE TABLE t_organization (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  org_code VARCHAR(50) NOT NULL UNIQUE COMMENT '机构编码',
+  org_name VARCHAR(100) NOT NULL COMMENT '机构名称',
+  address VARCHAR(300) COMMENT '地址',
+  phone VARCHAR(50) COMMENT '联系电话',
+  contact_person VARCHAR(50) COMMENT '联系人',
+  status TINYINT DEFAULT 1 COMMENT '1=启用 0=停用',
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='机构表';
+
 -- ========================================
 -- 业务表 - 入住管理
 -- ========================================
@@ -100,6 +116,7 @@ CREATE TABLE t_bed (
   bed_number VARCHAR(20) NOT NULL COMMENT '床位号',
   status TINYINT DEFAULT 0 COMMENT '0空闲 1占用 2维修',
   description VARCHAR(200),
+  org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -122,6 +139,7 @@ CREATE TABLE t_elderly (
   bed_id BIGINT COMMENT '床位ID',
   category VARCHAR(20) NOT NULL COMMENT 'SOCIAL/LOW_BAO/WU_BAO',
   care_level VARCHAR(30) COMMENT '护理等级',
+  disability_level VARCHAR(20) DEFAULT 'INTACT' COMMENT '失能等级: INTACT能力完好/MILD轻度/MODERATE中度/SEVERE重度/TOTAL完全失能; legacy: SELF_CARE',
   enable_long_care TINYINT DEFAULT 0 COMMENT '是否享受长护险',
   enable_coupon TINYINT DEFAULT 0 COMMENT '是否使用消费券',
   nursing_needs VARCHAR(1000) COMMENT '护理需求JSON',
@@ -136,9 +154,10 @@ CREATE TABLE t_elderly (
   contract_attachment_url VARCHAR(500) COMMENT '合同附件URL',
   payment_method VARCHAR(20) COMMENT 'MONTHLY/QUARTERLY/YEARLY/ONCE',
   bank_account VARCHAR(100) COMMENT '银行账户',
-  status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE在住/DISCHARGED退住/TRANSFERRING转床中',
+  status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE在住/DISCHARGED退住/ON_LEAVE请假中',
   discharge_date DATE,
   discharge_reason VARCHAR(200),
+  org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -182,6 +201,13 @@ CREATE TABLE t_staff (
   job_type VARCHAR(20) DEFAULT 'FULL' COMMENT 'FULL全职/PART兼职',
   qualification_urls VARCHAR(1000) COMMENT '资质证书URL JSON',
   base_salary DECIMAL(10,2) COMMENT '基本工资',
+  probation_status VARCHAR(20) DEFAULT 'FORMAL' COMMENT 'INTERN实习/FORMAL正式',
+  probation_months INT COMMENT '实习期月数',
+  probation_end_date DATE COMMENT '实习到期日期',
+  has_caregiver_cert TINYINT DEFAULT 0 COMMENT '是否有护工证：0=无，1=有',
+  has_health_cert TINYINT DEFAULT 0 COMMENT '是否有健康证：0=无，1=有',
+  position_type VARCHAR(20) DEFAULT 'CAREGIVER',
+  org_id BIGINT COMMENT '所属机构ID',
   status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE在职/RESIGNED离职',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -245,6 +271,7 @@ CREATE TABLE t_fee_account (
   total_consumed DECIMAL(12,2) DEFAULT 0 COMMENT '累计消费',
   carry_over DECIMAL(10,2) DEFAULT 0 COMMENT '顺延金额',
   warning_status TINYINT DEFAULT 0 COMMENT '0正常 1预警',
+  org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -261,7 +288,17 @@ CREATE TABLE t_fee_bill (
   carry_over_in DECIMAL(10,2) DEFAULT 0 COMMENT '上月顺延冲抵',
   carry_over_out DECIMAL(10,2) DEFAULT 0 COMMENT '本月顺延至下月',
   stay_days INT COMMENT '实住天数',
+  leave_days INT DEFAULT 0 COMMENT '请假天数',
   billing_rule VARCHAR(10) COMMENT 'A短期/B正常',
+  base_fee DECIMAL(12,2) DEFAULT 0 COMMENT '基础费用',
+  long_care_amount DECIMAL(12,2) DEFAULT 0 COMMENT '长护险补贴',
+  coupon_deduct DECIMAL(12,2) DEFAULT 0 COMMENT '消费券抵扣',
+  subsidy_amount DECIMAL(12,2) DEFAULT 0 COMMENT '财政补助合计',
+  personal_subsidy DECIMAL(12,2) DEFAULT 0 COMMENT '个人账户补助(低保)',
+  family_payable DECIMAL(12,2) DEFAULT 0 COMMENT '家属应缴',
+  gov_payable DECIMAL(12,2) DEFAULT 0 COMMENT '政府应拨',
+  subsidy_detail TEXT COMMENT '补贴明细JSON',
+  org_id BIGINT COMMENT '所属机构ID',
   status VARCHAR(20) DEFAULT 'DRAFT' COMMENT 'DRAFT草稿/CONFIRMED已确认/SETTLED已结清',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -272,14 +309,18 @@ CREATE TABLE t_fee_bill (
 DROP TABLE IF EXISTS t_payment_record;
 CREATE TABLE t_payment_record (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  elderly_id BIGINT NOT NULL,
+  elderly_id BIGINT COMMENT '老人ID(养老费用时必填)',
   amount DECIMAL(10,2) NOT NULL,
   payment_method VARCHAR(30) COMMENT 'CASH/TRANSFER/POS',
   source_type VARCHAR(30) COMMENT 'LONG_CARE长护险/COUPON消费券/OTHER其他',
+  income_type VARCHAR(30) COMMENT '收入类型：ELDERLY_FEE/SUBSIDY/DONATION/RENTAL/OTHER',
+  description VARCHAR(500) COMMENT '收入说明',
   voucher_url VARCHAR(500) COMMENT '凭证图片URL',
   receipt_no VARCHAR(50),
   operator_id BIGINT COMMENT '操作员ID',
+  payment_date DATE COMMENT '缴费时间',
   remark VARCHAR(200),
+  org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -469,6 +510,7 @@ DROP TABLE IF EXISTS t_service_item;
 CREATE TABLE t_service_item (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
+  category VARCHAR(50) COMMENT '服务大类',
   price DECIMAL(10,2) NOT NULL COMMENT '收费标准',
   unit VARCHAR(20) COMMENT '计费单位(次/小时)',
   description VARCHAR(500),
@@ -567,7 +609,7 @@ DROP TABLE IF EXISTS t_bed_transfer;
 CREATE TABLE t_bed_transfer (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   elderly_id BIGINT NOT NULL,
-  from_bed_id BIGINT NOT NULL,
+  from_bed_id BIGINT COMMENT '原床位ID，首次分配可为空',
   to_bed_id BIGINT NOT NULL,
   transfer_date DATE NOT NULL,
   reason VARCHAR(200),
@@ -585,6 +627,172 @@ CREATE TABLE t_elderly_allergy (
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='药物过敏记录';
+
+-- t_elderly_leave: 老人请假记录
+DROP TABLE IF EXISTS t_elderly_leave;
+CREATE TABLE t_elderly_leave (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  elderly_id BIGINT NOT NULL COMMENT '老人ID',
+  start_date DATE NOT NULL COMMENT '请假开始日期',
+  end_date DATE COMMENT '预计结束日期',
+  reason VARCHAR(200) COMMENT '请假原因',
+  status VARCHAR(20) DEFAULT 'ON_LEAVE' COMMENT 'ON_LEAVE请假中/RETURNED已销假/CANCELLED已取消',
+  return_date DATE COMMENT '实际返回日期',
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='老人请假记录';
+
+-- ========================================
+-- 业务表 - 补贴政策
+-- ========================================
+
+-- t_subsidy_policy: 补贴政策配置
+DROP TABLE IF EXISTS t_subsidy_policy;
+CREATE TABLE t_subsidy_policy (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  policy_code VARCHAR(50) NOT NULL COMMENT '策略编码',
+  policy_name VARCHAR(100) NOT NULL COMMENT '策略名称',
+  category VARCHAR(20) COMMENT '适用人员类别: SOCIAL/WU_BAO/LOW_BAO/ALL',
+  disability_level VARCHAR(20) COMMENT '适用失能等级: null=不限/MODERATE/SEVERE',
+  calc_type VARCHAR(20) NOT NULL COMMENT 'FIXED_MONTHLY固定月额/DAILY_RATE日补贴/THRESHOLD_DEDUCT满额抵扣',
+  amount DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '金额',
+  threshold_amount DECIMAL(12,2) COMMENT '满额抵扣阈值',
+  deduct_amount DECIMAL(12,2) COMMENT '满额抵扣金额',
+  pay_target VARCHAR(20) DEFAULT 'ORG' COMMENT '拨付对象: ORG机构/PERSONAL个人',
+  min_stay_days INT COMMENT '最低入住天数要求',
+  effective_date DATE NOT NULL COMMENT '生效日期',
+  expire_date DATE COMMENT '失效日期(null=长期)',
+  enabled TINYINT DEFAULT 1,
+  remark VARCHAR(500),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='补贴政策配置';
+
+-- ========================================
+-- 业务表 - 会计凭证
+-- ========================================
+
+-- t_accounting_subject: 会计科目
+DROP TABLE IF EXISTS t_accounting_subject;
+CREATE TABLE t_accounting_subject (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(10) NOT NULL UNIQUE,
+  name VARCHAR(50) NOT NULL,
+  subject_type VARCHAR(20) NOT NULL,
+  direction VARCHAR(10) NOT NULL,
+  enabled TINYINT DEFAULT 1,
+  sort_order INT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会计科目';
+
+-- t_voucher_header: 凭证主表(头)
+DROP TABLE IF EXISTS t_voucher_header;
+CREATE TABLE t_voucher_header (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  voucher_word VARCHAR(10) NOT NULL DEFAULT '记',
+  voucher_no VARCHAR(30) NOT NULL UNIQUE,
+  voucher_date DATE NOT NULL,
+  attachment_count INT DEFAULT 0,
+  description VARCHAR(500),
+  status VARCHAR(20) DEFAULT 'DRAFT',
+  related_biz_type VARCHAR(30),
+  related_biz_id BIGINT,
+  creator_id BIGINT NOT NULL,
+  reviewer_id BIGINT,
+  review_time DATETIME,
+  reject_reason VARCHAR(200),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='凭证主表(头)';
+
+-- t_voucher_entry: 凭证分录明细表
+DROP TABLE IF EXISTS t_voucher_entry;
+CREATE TABLE t_voucher_entry (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  voucher_id BIGINT NOT NULL,
+  line_no INT NOT NULL,
+  summary VARCHAR(200),
+  subject_id BIGINT NOT NULL,
+  debit_amount DECIMAL(12,2) DEFAULT 0.00,
+  credit_amount DECIMAL(12,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='凭证分录明细表';
+
+-- ========== 服务质量评估表(GB/T 43153-2023 第7章) ==========
+DROP TABLE IF EXISTS t_service_assessment;
+CREATE TABLE t_service_assessment (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  assessment_no VARCHAR(30) NOT NULL UNIQUE,
+  assessment_date DATE NOT NULL,
+  assessor_name VARCHAR(50),
+  assessor_org VARCHAR(100),
+  assessment_period VARCHAR(50),
+  elderly_id BIGINT,
+  elderly_name VARCHAR(50),
+  service_address VARCHAR(300),
+  agreement_signed TINYINT DEFAULT 0,
+  agreement_complete TINYINT DEFAULT 0,
+  plan_formulated TINYINT DEFAULT 0,
+  plan_matches_needs TINYINT DEFAULT 0,
+  agreement_score INT DEFAULT 0,
+  service_on_time TINYINT DEFAULT 0,
+  staff_identified TINYINT DEFAULT 0,
+  risk_informed TINYINT DEFAULT 0,
+  service_per_plan TINYINT DEFAULT 0,
+  emergency_handled TINYINT DEFAULT 0,
+  acceptance_done TINYINT DEFAULT 0,
+  fulfillment_score INT DEFAULT 0,
+  record_complete TINYINT DEFAULT 0,
+  record_timely TINYINT DEFAULT 0,
+  record_accurate TINYINT DEFAULT 0,
+  record_score INT DEFAULT 0,
+  elderly_satisfaction INT DEFAULT 0,
+  satisfaction_method VARCHAR(50),
+  total_score INT DEFAULT 0,
+  grade VARCHAR(20),
+  issues_found TEXT,
+  improvement_measures TEXT,
+  improvement_deadline DATE,
+  photo_urls TEXT,
+  assessor_signature_url VARCHAR(500),
+  org_signature_url VARCHAR(500),
+  status VARCHAR(20) DEFAULT 'DRAFT',
+  creator_id BIGINT,
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='服务质量评估表';
+
+-- t_elderly_change_log: 老人信息变更日志
+DROP TABLE IF EXISTS t_elderly_change_log;
+CREATE TABLE t_elderly_change_log (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  elderly_id BIGINT NOT NULL,
+  field_name VARCHAR(50) NOT NULL COMMENT '变更字段',
+  field_label VARCHAR(50) NOT NULL COMMENT '字段中文名',
+  old_value VARCHAR(200) COMMENT '旧值',
+  new_value VARCHAR(200) COMMENT '新值',
+  operator VARCHAR(50) COMMENT '操作人',
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='老人信息变更日志';
+CREATE INDEX idx_elderly_id ON t_elderly_change_log (elderly_id);
+
+-- ========== 支出记录表 ==========
+DROP TABLE IF EXISTS t_expense_record;
+CREATE TABLE t_expense_record (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  expense_type VARCHAR(30) NOT NULL COMMENT 'FOOD/MEDICAL/MAINTENANCE/SALARY/UTILITY/PURCHASE/OTHER',
+  amount DECIMAL(12,2) NOT NULL,
+  expense_date DATE NOT NULL,
+  payee VARCHAR(100) COMMENT '收款方',
+  description VARCHAR(500),
+  operator_id BIGINT,
+  remark VARCHAR(200),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支出记录';
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -635,13 +843,16 @@ INSERT IGNORE INTO t_menu (id, parent_id, menu_name, menu_type, path, component,
 INSERT IGNORE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission) VALUES
   (31, 3, '护工管理', 1, '/staff/list', 'pages/staff/StaffList', NULL, 1, 'staff:list'),
   (32, 3, '打卡记录', 1, '/staff/attendance', 'pages/staff/Attendance', NULL, 2, 'staff:attendance'),
-  (33, 3, '排班管理', 1, '/staff/schedule', 'pages/staff/Schedule', NULL, 3, 'staff:schedule');
+  (33, 3, '排班管理', 1, '/staff/schedule', 'pages/staff/Schedule', NULL, 3, 'staff:schedule'),
+  (34, 3, '员工管理', 1, '/staff/employees', 'pages/staff/Employees', NULL, 4, 'staff:employee');
 
 -- 财务管理子菜单
 INSERT IGNORE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission) VALUES
   (41, 4, '缴费管理', 1, '/finance/payment', 'pages/finance/Payment', NULL, 1, 'finance:payment'),
   (42, 4, '凭证管理', 1, '/finance/voucher', 'pages/finance/Voucher', NULL, 2, 'finance:voucher'),
-  (43, 4, '报账管理', 1, '/finance/reimbursement', 'pages/finance/Reimbursement', NULL, 3, 'finance:reimbursement');
+  (43, 4, '报账管理', 1, '/finance/reimbursement', 'pages/finance/Reimbursement', NULL, 3, 'finance:reimbursement'),
+  (44, 4, '月度账单', 1, '/finance/bills', 'pages/finance/Bills', NULL, 4, 'finance:bill'),
+  (45, 4, '补贴政策', 1, '/finance/subsidy', 'pages/finance/Subsidy', NULL, 5, 'system:config');
 
 -- 报表管理子菜单
 INSERT IGNORE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission) VALUES
@@ -663,7 +874,8 @@ INSERT IGNORE INTO t_menu (id, parent_id, menu_name, menu_type, path, component,
 -- 上门服务子菜单
 INSERT IGNORE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission) VALUES
   (71, 7, '预约管理', 1, '/home-service/orders', 'pages/home-service/Orders', NULL, 1, 'home-service:orders'),
-  (72, 7, '服务记录', 1, '/home-service/records', 'pages/home-service/Records', NULL, 2, 'home-service:records');
+  (72, 7, '服务记录', 1, '/home-service/records', 'pages/home-service/Records', NULL, 2, 'home-service:records'),
+  (73, 7, '服务评估', 1, '/home-service/assessment', 'pages/home-service/Assessment', NULL, 3, 'home-service:assessment');
 
 -- 系统管理子菜单
 INSERT IGNORE INTO t_menu (id, parent_id, menu_name, menu_type, path, component, icon, sort_order, permission) VALUES

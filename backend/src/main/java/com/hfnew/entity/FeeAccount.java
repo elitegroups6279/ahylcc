@@ -30,6 +30,9 @@ public class FeeAccount {
 
     private Integer warningStatus;
 
+        @TableField(fill = FieldFill.INSERT)
+        private Long orgId;
+
     @TableLogic
     private Integer deleted;
 

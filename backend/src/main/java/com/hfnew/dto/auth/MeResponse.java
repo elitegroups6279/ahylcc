@@ -7,6 +7,8 @@ public class MeResponse {
     private String username;
     private List<String> roles;
     private List<String> permissions;
+    private Long orgId;
+    private String orgName;
 
     public Long getUserId() {
         return userId;
@@ -38,6 +40,22 @@ public class MeResponse {
 
     public void setPermissions(List<String> permissions) {
         this.permissions = permissions;
+    }
+
+    public Long getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
+    }
+
+    public String getOrgName() {
+        return orgName;
+    }
+
+    public void setOrgName(String orgName) {
+        this.orgName = orgName;
     }
 }
 

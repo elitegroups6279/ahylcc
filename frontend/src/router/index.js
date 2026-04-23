@@ -197,6 +197,12 @@ const routes = [
         meta: { title: '角色管理', permission: 'system:roles', parent: '系统管理', requiresAuth: true }
       },
       {
+        path: 'system/organizations',
+        name: 'Organizations',
+        component: () => import('../pages/system/Organizations.vue'),
+        meta: { title: '机构管理', permission: 'system:organizations', parent: '系统管理', requiresAuth: true }
+      },
+      {
         path: 'system/menus',
         name: 'Menus',
         component: () => import('../pages/system/Menus.vue'),

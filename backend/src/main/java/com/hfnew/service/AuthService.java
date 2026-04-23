@@ -77,8 +77,8 @@ public class AuthService {
         List<String> permissions = menuService.getPermissionsByRoleIds(roleIds);
 
         // 生成 JWT
-        String accessToken = jwtService.createAccessToken(user.getId(), user.getUsername(), permissions, roles);
-        String refreshToken = jwtService.createRefreshToken(user.getId(), user.getUsername(), permissions, roles);
+        String accessToken = jwtService.createAccessToken(user.getId(), user.getUsername(), permissions, roles, user.getOrgId());
+        String refreshToken = jwtService.createRefreshToken(user.getId(), user.getUsername(), permissions, roles, user.getOrgId());
 
         // 保存 RefreshToken
         refreshTokenStore.put(
@@ -87,6 +87,7 @@ public class AuthService {
                 user.getUsername(),
                 permissions,
                 roles,
+                user.getOrgId(),
                 jwtService.getRefreshTtlSeconds() * 1000
         );
 
@@ -106,6 +107,7 @@ public class AuthService {
         me.setUsername(user.getUsername());
         me.setRoles(roles);
         me.setPermissions(permissions);
+        me.setOrgId(user.getOrgId());
         resp.setUser(me);
 
         log.info("用户登录成功: {}", username);
@@ -125,11 +127,28 @@ public class AuthService {
             throw new BizException(401, 401, "refresh token invalid or expired");
         }
 
+        // 从数据库重新获取最新权限，避免 JWT 中权限过期
+        List<Long> roleIds = getRoleIdsByUserId(info.userId());
+        List<String> permissions = menuService.getPermissionsByRoleIds(roleIds);
+        List<String> roles = getRoleCodesByUserId(info.userId());
+
+        // 更新 RefreshTokenStore 中的权限信息
+        refreshTokenStore.put(
+                refreshToken,
+                info.userId(),
+                info.username(),
+                permissions,
+                roles,
+                info.orgId(),
+                jwtService.getRefreshTtlSeconds() * 1000
+        );
+
         return jwtService.createAccessToken(
                 info.userId(),
                 info.username(),
-                info.permissions(),
-                info.roles()
+                permissions,
+                roles,
+                info.orgId()
         );
     }
 

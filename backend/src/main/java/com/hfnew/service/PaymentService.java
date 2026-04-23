@@ -117,6 +117,27 @@ public class PaymentService {
         return record.getId();
     }
 
+    @Transactional
+    public void deletePayment(Long id) {
+        PaymentRecord record = paymentRecordMapper.selectById(id);
+        if (record == null) {
+            throw new BizException(404, 404, "收入记录不存在");
+        }
+        // 逻辑删除（MyBatis-Plus @TableLogic 会自动 set deleted=1）
+        paymentRecordMapper.deleteById(id);
+
+        // 如果有关联老人，回退费用账户余额
+        if (record.getElderlyId() != null) {
+            FeeAccount account = getOrCreateFeeAccount(record.getElderlyId());
+            BigDecimal balance = account.getBalance() == null ? BigDecimal.ZERO : account.getBalance();
+            BigDecimal totalCharged = account.getTotalCharged() == null ? BigDecimal.ZERO : account.getTotalCharged();
+            account.setBalance(balance.subtract(record.getAmount()));
+            account.setTotalCharged(totalCharged.subtract(record.getAmount()));
+            account.setWarningStatus(calcWarningStatus(record.getElderlyId(), account.getBalance()));
+            feeAccountMapper.updateById(account);
+        }
+    }
+
     private void ensureElderlyExists(Long elderlyId) {
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(1) FROM t_elderly WHERE id = ? AND deleted = 0",
