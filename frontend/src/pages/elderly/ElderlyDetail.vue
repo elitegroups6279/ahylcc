@@ -171,7 +171,7 @@
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <el-tag v-if="row.status === 'ON_LEAVE'" type="warning">请假中</el-tag>
-            <el-tag v-else-if="row.status === 'RETURNED'" type="success">已销假</el-tag>
+            <el-tag v-else-if="row.status === 'RETURNED'" type="success">已返院</el-tag>
             <el-tag v-else-if="row.status === 'CANCELLED'" type="info">已取消</el-tag>
             <el-tag v-else type="info">{{ row.status }}</el-tag>
           </template>
