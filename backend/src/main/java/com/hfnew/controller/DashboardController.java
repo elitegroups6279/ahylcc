@@ -190,15 +190,24 @@ public class DashboardController {
             Elderly e = elderlyMapper.selectById(leave.getElderlyId());
             if (e == null) continue;
 
+            // 对于已销假(RETURNED)的记录，使用return_date作为结束日期；否则使用end_date
+            LocalDate leaveEnd;
+            if ("RETURNED".equals(leave.getStatus()) && leave.getReturnDate() != null) {
+                leaveEnd = leave.getReturnDate();
+            } else {
+                leaveEnd = leave.getEndDate();
+            }
+
             LocalDate from = leave.getStartDate().isBefore(monthStart) ? monthStart : leave.getStartDate();
-            LocalDate to = leave.getEndDate() != null && leave.getEndDate().isBefore(monthEnd) 
-                    ? leave.getEndDate() 
+            LocalDate to = leaveEnd != null && leaveEnd.isBefore(monthEnd)
+                    ? leaveEnd
                     : monthEnd;
 
+            String eventType = "RETURNED".equals(leave.getStatus()) ? "LEAVE_RETURNED" : "LEAVE";
+
             for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-                String dateStr = d.toString();
                 eventMap.computeIfAbsent(d, k -> new ArrayList<>())
-                        .add(new CalendarEventItemDTO("LEAVE", null, e.getName(), e.getId()));
+                        .add(new CalendarEventItemDTO(eventType, null, e.getName(), e.getId()));
             }
         }
 

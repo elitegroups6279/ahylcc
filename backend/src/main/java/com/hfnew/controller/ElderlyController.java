@@ -126,8 +126,8 @@ public class ElderlyController {
 
     @PutMapping("/{id}/leave/return")
     @OpLog(module = "入住管理", operation = "老人销假")
-    public ResponseEntity<ApiResponse<ElderlyLeave>> returnFromLeave(@PathVariable Long id) {
-        ElderlyLeave leave = elderlyLeaveService.returnFromLeave(id);
+    public ResponseEntity<ApiResponse<ElderlyLeave>> returnFromLeave(@PathVariable Long id, @RequestBody(required = false) ElderlyReturnRequest request) {
+        ElderlyLeave leave = elderlyLeaveService.returnFromLeave(id, request);
         return ResponseEntity.ok(ApiResponse.success(leave));
     }
 

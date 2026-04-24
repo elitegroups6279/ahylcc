@@ -11,6 +11,6 @@ import java.util.List;
 @Mapper
 public interface ElderlyLeaveMapper extends BaseMapper<ElderlyLeave> {
     
-    @Select("SELECT * FROM t_elderly_leave WHERE deleted = 0 AND status = 'ON_LEAVE' AND start_date <= #{monthEnd} AND (end_date IS NULL OR end_date >= #{monthStart})")
+    @Select("SELECT * FROM t_elderly_leave WHERE deleted = 0 AND status IN ('ON_LEAVE', 'RETURNED') AND start_date <= #{monthEnd} AND (end_date IS NULL OR end_date >= #{monthStart})")
     List<ElderlyLeave> selectLeavesInMonth(@Param("monthStart") LocalDate monthStart, @Param("monthEnd") LocalDate monthEnd);
 }

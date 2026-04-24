@@ -1,7 +1,9 @@
 package com.hfnew.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.hfnew.dto.elderly.ElderlyLeaveRequest;
+import com.hfnew.dto.elderly.ElderlyReturnRequest;
 import com.hfnew.entity.Elderly;
 import com.hfnew.entity.ElderlyLeave;
 import com.hfnew.exception.BizException;
@@ -54,9 +56,11 @@ public class ElderlyLeaveService {
         leave.setStatus("ON_LEAVE");
         elderlyLeaveMapper.insert(leave);
 
-        // 更新老人status为ON_LEAVE
-        elderly.setStatus("ON_LEAVE");
-        elderlyMapper.updateById(elderly);
+        // 更新老人status为ON_LEAVE（仅更新status字段，避免覆盖其他字段）
+        LambdaUpdateWrapper<Elderly> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Elderly::getId, elderlyId)
+                     .set(Elderly::getStatus, "ON_LEAVE");
+        elderlyMapper.update(null, updateWrapper);
 
         return leave;
     }
@@ -65,7 +69,7 @@ public class ElderlyLeaveService {
      * 销假（返回）
      */
     @Transactional
-    public ElderlyLeave returnFromLeave(Long elderlyId) {
+    public ElderlyLeave returnFromLeave(Long elderlyId, ElderlyReturnRequest request) {
         // 查找该老人最新的ON_LEAVE记录
         LambdaQueryWrapper<ElderlyLeave> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ElderlyLeave::getElderlyId, elderlyId)
@@ -79,17 +83,18 @@ public class ElderlyLeaveService {
             throw new BizException(404, 404, "未找到该老人的请假记录");
         }
 
-        // 更新请假记录：status=RETURNED, returnDate=今天
+        // 更新请假记录：status=RETURNED, returnDate=提供的日期或今天
         leave.setStatus("RETURNED");
-        leave.setReturnDate(LocalDate.now());
+        LocalDate returnDate = (request != null && request.getReturnDate() != null)
+                ? request.getReturnDate() : LocalDate.now();
+        leave.setReturnDate(returnDate);
         elderlyLeaveMapper.updateById(leave);
 
-        // 更新老人status为ACTIVE
-        Elderly elderly = elderlyMapper.selectById(elderlyId);
-        if (elderly != null) {
-            elderly.setStatus("ACTIVE");
-            elderlyMapper.updateById(elderly);
-        }
+        // 更新老人status为ACTIVE（仅更新status字段，避免覆盖其他字段如disabilityLevel）
+        LambdaUpdateWrapper<Elderly> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Elderly::getId, elderlyId)
+                     .set(Elderly::getStatus, "ACTIVE");
+        elderlyMapper.update(null, updateWrapper);
 
         return leave;
     }

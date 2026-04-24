@@ -141,6 +141,22 @@
         <el-button type="primary" @click="submitLeave" :loading="leaveLoading">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 销假对话框 -->
+    <el-dialog v-model="returnDialogVisible" title="老人销假" width="500px" :close-on-click-modal="false">
+      <el-form :model="returnForm" ref="returnFormRef" label-width="120px">
+        <el-form-item label="老人姓名">
+          <el-input :value="returnForm.elderlyName" disabled />
+        </el-form-item>
+        <el-form-item label="返院日期" prop="returnDate">
+          <el-date-picker v-model="returnForm.returnDate" type="date" value-format="YYYY-MM-DD" placeholder="选择返院日期" style="width: 100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="returnDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitReturn" :loading="returnLoading">确认销假</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -294,6 +310,16 @@ const leaveRules = {
   startDate: [{ required: true, message: '请选择请假开始日期', trigger: 'change' }]
 }
 
+// 销假相关
+const returnDialogVisible = ref(false)
+const returnLoading = ref(false)
+const returnFormRef = ref(null)
+const returnForm = reactive({
+  elderlyId: null,
+  elderlyName: '',
+  returnDate: ''
+})
+
 const openLeaveDialog = (row) => {
   leaveForm.elderlyId = row.id
   leaveForm.elderlyName = row.name
@@ -323,20 +349,26 @@ const submitLeave = async () => {
   }
 }
 
-const handleReturn = async (row) => {
+const handleReturn = (row) => {
+  returnForm.elderlyId = row.id
+  returnForm.elderlyName = row.name
+  returnForm.returnDate = new Date().toISOString().slice(0, 10)
+  returnDialogVisible.value = true
+}
+
+const submitReturn = async () => {
+  returnLoading.value = true
   try {
-    await ElMessageBox.confirm(`确认「${row.name}」销假返回？`, '销假确认', {
-      confirmButtonText: '确认销假',
-      cancelButtonText: '取消',
-      type: 'info'
+    await api.put(`/api/elderly/${returnForm.elderlyId}/leave/return`, {
+      returnDate: returnForm.returnDate || null
     })
-    await api.put(`/api/elderly/${row.id}/leave/return`)
     ElMessage.success('销假成功')
+    returnDialogVisible.value = false
     fetchList()
   } catch (e) {
-    if (e !== 'cancel') {
-      ElMessage.error(e.response?.data?.message || '销假失败')
-    }
+    ElMessage.error(e.response?.data?.message || '销假失败')
+  } finally {
+    returnLoading.value = false
   }
 }
 

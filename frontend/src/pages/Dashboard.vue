@@ -81,6 +81,7 @@
             <span class="legend-item"><span class="legend-dot" style="background:#fadb14"></span>五保入住</span>
             <span class="legend-item"><span class="legend-dot" style="background:#1890ff"></span>低保入住</span>
             <span class="legend-item"><span class="legend-dot" style="background:#52c41a"></span>请假</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#13c2c2"></span>已销假</span>
             <span class="legend-item"><span class="legend-dot" style="background:#ff4d4f"></span>退住</span>
           </div>
         </el-card>
@@ -251,6 +252,7 @@ const loadCalendarEvents = async () => {
 const getEventColor = (event) => {
   if (event.type === 'DISCHARGE') return '#ff4d4f'
   if (event.type === 'LEAVE') return '#52c41a'
+  if (event.type === 'LEAVE_RETURNED') return '#13c2c2'
   if (event.type === 'ADMISSION') {
     if (event.category === 'SOCIAL') return '#fa8c16'
     if (event.category === 'WU_BAO') return '#fadb14'
@@ -263,6 +265,7 @@ const getEventColor = (event) => {
 const getEventTypeText = (event) => {
   if (event.type === 'DISCHARGE') return '退住'
   if (event.type === 'LEAVE') return '请假'
+  if (event.type === 'LEAVE_RETURNED') return '已销假'
   if (event.type === 'ADMISSION') {
     if (event.category === 'SOCIAL') return '社会化入住'
     if (event.category === 'WU_BAO') return '五保入住'

@@ -156,6 +156,28 @@
         </div>
       </template>
 
+      <el-divider content-position="left">请假记录</el-divider>
+      <el-table :data="leaveHistory" row-key="id" size="small" v-loading="leaveLoading">
+        <el-table-column prop="startDate" label="请假日期" width="140" />
+        <el-table-column prop="endDate" label="预计返回日期" width="140">
+          <template #default="{ row }">{{ row.endDate || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="returnDate" label="实际返回日期" width="140">
+          <template #default="{ row }">{{ row.returnDate || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="reason" label="原因" min-width="200">
+          <template #default="{ row }">{{ row.reason || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.status === 'ON_LEAVE'" type="warning">请假中</el-tag>
+            <el-tag v-else-if="row.status === 'RETURNED'" type="success">已销假</el-tag>
+            <el-tag v-else-if="row.status === 'CANCELLED'" type="info">已取消</el-tag>
+            <el-tag v-else type="info">{{ row.status }}</el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+
       <el-divider content-position="left">缴费记录</el-divider>
       <el-table :data="payments" row-key="id" size="small" v-loading="paymentLoading">
         <el-table-column prop="id" label="ID" width="90" />
@@ -206,6 +228,8 @@ const staffLoading = ref(false)
 const payments = ref([])
 const bedOptions = ref([])
 const changeLogs = ref([])
+const leaveHistory = ref([])
+const leaveLoading = ref(false)
 
 // Original values for cancel
 const originalValues = reactive({})
@@ -572,6 +596,20 @@ async function fetchChangeLogs() {
   }
 }
 
+async function fetchLeaveHistory() {
+  leaveLoading.value = true
+  try {
+    const resp = await api.get(`/api/elderly/${route.params.id}/leave`)
+    const body = resp.data
+    if (body.code === 200) leaveHistory.value = body.data || []
+    else leaveHistory.value = []
+  } catch (e) {
+    leaveHistory.value = []
+  } finally {
+    leaveLoading.value = false
+  }
+}
+
 async function undoDischarge() {
   try {
     await ElMessageBox.confirm(
@@ -605,6 +643,7 @@ function formatTime(dt) {
 onMounted(async () => {
   await fetchDetail()
   await fetchStaffNames()
+  await fetchLeaveHistory()
   await fetchPayments()
   await fetchChangeLogs()
 })
