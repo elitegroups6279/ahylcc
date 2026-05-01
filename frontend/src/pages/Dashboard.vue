@@ -1,18 +1,10 @@
 <template>
   <div class="dashboard-page">
-    <!-- 费用预警滚动条 -->
-    <div v-if="feeWarnings.length > 0" class="warning-strip">
-      <div class="marquee">
-        <div class="marquee-content">
-          {{ warningText }}
-        </div>
-      </div>
-    </div>
 
     <!-- 5个渐变色统计卡片 -->
     <el-row :gutter="16" class="stats-row">
       <el-col :span="4" v-for="item in statsCards" :key="item.title" style="min-width: 180px">
-        <div class="stat-card" :style="{ background: item.gradient }">
+        <div class="stat-card" :style="{ background: item.gradient }" :class="{ clickable: item.clickable }" @click="item.onClick?.()">
           <div class="stat-icon">
             <el-icon :size="32"><component :is="item.icon" /></el-icon>
           </div>
@@ -95,13 +87,27 @@
             </div>
           </template>
           <div class="pending-list" v-if="pendingSummary">
-            <div class="pending-item warn" @click="$router.push('/finance/payment')">
-              <div class="pending-icon"><el-icon :size="24"><Warning /></el-icon></div>
-              <div class="pending-info">
-                <div class="pending-count">{{ pendingSummary.feeWarningCount ?? 0 }}</div>
-                <div class="pending-label">费用预警</div>
+            <div class="pending-item-wrap">
+              <div class="pending-item warn" @click="feeWarningExpanded = !feeWarningExpanded">
+                <div class="pending-icon"><el-icon :size="24"><Warning /></el-icon></div>
+                <div class="pending-info">
+                  <div class="pending-count">{{ pendingSummary.feeWarningCount ?? 0 }}</div>
+                  <div class="pending-label">费用预警</div>
+                </div>
+                <el-icon class="pending-arrow" :class="{ expanded: feeWarningExpanded }"><ArrowRight /></el-icon>
               </div>
-              <el-icon class="pending-arrow"><ArrowRight /></el-icon>
+              <div v-if="feeWarningExpanded && feeWarnings.length > 0" class="warning-detail-list">
+                <div
+                  v-for="w in feeWarnings"
+                  :key="w.elderlyId"
+                  class="warning-detail-item"
+                  @click="$router.push('/finance/payment')"
+                >
+                  <span class="warning-name">{{ w.name }}</span>
+                  <span class="warning-balance">余额 ¥{{ Number(w.balance ?? 0).toFixed(2) }}</span>
+                  <span class="warning-days">剩 {{ w.remainingDays }} 天</span>
+                </div>
+              </div>
             </div>
             <div class="pending-item warn" @click="$router.push('/finance/reimbursement')">
               <div class="pending-icon"><el-icon :size="24"><Tickets /></el-icon></div>
@@ -168,6 +174,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '../store/auth'
 import { api } from '../api/client'
+import { ElMessageBox } from 'element-plus'
 import {
   User, UserFilled, Money, Wallet, Bell,
   ArrowLeft, ArrowRight, Warning, Document, Tickets,
@@ -192,6 +199,33 @@ const stats = ref({
   monthlyExpense: 0,
   bedUsageRate: 0
 })
+
+// 总床位数（从localStorage读取，默认390）
+const totalBedCount = ref(parseInt(localStorage.getItem('totalBedCount')) || 390)
+const feeWarningExpanded = ref(false)
+
+// 床位使用率前端计算
+const bedUsageRateDisplay = computed(() => {
+  if (!totalBedCount.value || totalBedCount.value <= 0) return '0.0%'
+  return ((stats.value.elderlyCount / totalBedCount.value) * 100).toFixed(1) + '%'
+})
+
+// 点击床位使用率卡片设置总床位数
+const handleBedCardClick = () => {
+  ElMessageBox.prompt('请输入机构总床位数', '设置总床位数', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputPattern: /^\d+$/,
+    inputErrorMessage: '请输入有效的正整数',
+    inputValue: String(totalBedCount.value)
+  }).then(({ value }) => {
+    const count = parseInt(value)
+    if (count > 0) {
+      totalBedCount.value = count
+      localStorage.setItem('totalBedCount', String(count))
+    }
+  }).catch(() => {})
+}
 
 // 5个渐变色统计卡片配置
 const statsCards = computed(() => [
@@ -221,18 +255,13 @@ const statsCards = computed(() => [
   },
   {
     title: '床位使用率',
-    value: (stats.value.bedUsageRate || 0) + '%',
+    value: bedUsageRateDisplay.value,
     icon: DataBoard,
-    gradient: 'linear-gradient(135deg, #13c2c2, #5cdbd3)'
+    gradient: 'linear-gradient(135deg, #13c2c2, #5cdbd3)',
+    clickable: true,
+    onClick: handleBedCardClick
   }
 ])
-
-// 费用预警滚动文本
-const warningText = computed(() => {
-  return feeWarnings.value
-    .map(w => `⚠ ${w.name} 余额剩余 ${w.remainingDays} 天`)
-    .join(' · ')
-})
 
 // 获取日历事件
 const loadCalendarEvents = async () => {
@@ -406,37 +435,6 @@ onUnmounted(() => {
   padding: 16px;
 }
 
-/* 费用预警滚动条 */
-.warning-strip {
-  height: 36px;
-  background: #f56c6c;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-  overflow: hidden;
-}
-
-.marquee {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.marquee-content {
-  display: inline-block;
-  padding-left: 100%;
-  animation: marquee 18s linear infinite;
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
-}
-
 /* 统计卡片样式 */
 .stats-row {
   margin-bottom: 16px;
@@ -452,6 +450,10 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s;
   cursor: default;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
 }
 
 .stat-card:hover {
@@ -670,6 +672,11 @@ onUnmounted(() => {
 .pending-arrow {
   color: #c0c4cc;
   font-size: 14px;
+  transition: transform 0.2s;
+}
+
+.pending-arrow.expanded {
+  transform: rotate(90deg);
 }
 
 /* 快捷操作样式 */
@@ -688,6 +695,60 @@ onUnmounted(() => {
   height: 48px;
   font-size: 15px;
   border-radius: 8px;
+}
+
+.pending-item-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.warning-detail-list {
+  margin-top: 8px;
+  margin-left: 52px;
+  margin-right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.warning-detail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: 1px solid #ebeef5;
+}
+
+.warning-detail-item:hover {
+  background: #f5f7fa;
+}
+
+.warning-name {
+  font-weight: 500;
+  color: #303133;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+}
+
+.warning-balance {
+  color: #f56c6c;
+  font-weight: 600;
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+.warning-days {
+  color: #909399;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 /* 底部版权区域 */
