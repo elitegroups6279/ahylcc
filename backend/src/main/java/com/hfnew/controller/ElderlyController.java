@@ -38,9 +38,10 @@ public class ElderlyController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String category
     ) {
-        return ResponseEntity.ok(ApiResponse.success(elderlyService.list(page, pageSize, keyword, status)));
+        return ResponseEntity.ok(ApiResponse.success(elderlyService.list(page, pageSize, keyword, status, category)));
     }
 
     @GetMapping("/options")

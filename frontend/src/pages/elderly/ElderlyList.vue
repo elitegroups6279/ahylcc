@@ -10,6 +10,11 @@
               <el-option label="请假中" value="ON_LEAVE" />
               <el-option label="退住" value="DISCHARGED" />
             </el-select>
+            <el-select v-model="category" placeholder="类别" clearable style="width: 130px" @change="reload">
+              <el-option label="社会化" value="SOCIAL" />
+              <el-option label="五保对象" value="WU_BAO" />
+              <el-option label="低保对象" value="LOW_BAO" />
+            </el-select>
             <el-input v-model="keyword" placeholder="姓名/编号" clearable style="width: 200px" @keyup.enter="reload" />
             <el-button @click="fetchList">刷新</el-button>
             <el-button type="success" :icon="Download" @click="downloadTemplate">下载导入模板</el-button>
@@ -175,6 +180,7 @@ const page = ref(1)
 const pageSize = ref(10)
 const keyword = ref('')
 const status = ref('ACTIVE')
+const category = ref('')
 
 // 导入相关
 const importDialogVisible = ref(false)
@@ -205,7 +211,8 @@ async function fetchList() {
         page: page.value,
         pageSize: pageSize.value,
         keyword: keyword.value || undefined,
-        status: status.value || undefined
+        status: status.value || undefined,
+        category: category.value || undefined
       }
     })
     const body = resp.data

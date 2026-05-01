@@ -206,8 +206,16 @@ public class DashboardController {
             String eventType = "RETURNED".equals(leave.getStatus()) ? "LEAVE_RETURNED" : "LEAVE";
 
             for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+                // For RETURNED leave: only the return_date itself gets LEAVE_RETURNED;
+                // all other days (start_date up to day before return_date) get LEAVE
+                String dayType;
+                if ("RETURNED".equals(leave.getStatus()) && leave.getReturnDate() != null && d.isEqual(leave.getReturnDate())) {
+                    dayType = "LEAVE_RETURNED";
+                } else {
+                    dayType = "LEAVE";
+                }
                 eventMap.computeIfAbsent(d, k -> new ArrayList<>())
-                        .add(new CalendarEventItemDTO(eventType, null, e.getName(), e.getId()));
+                        .add(new CalendarEventItemDTO(dayType, null, e.getName(), e.getId()));
             }
         }
 

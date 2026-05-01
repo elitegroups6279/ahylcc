@@ -46,7 +46,7 @@ public class ElderlyService {
     private final BedService bedService;
     private final JdbcTemplate jdbcTemplate;
 
-    public PageResult<ElderlyVO> list(int page, int pageSize, String keyword, String status) {
+    public PageResult<ElderlyVO> list(int page, int pageSize, String keyword, String status, String category) {
         Page<Elderly> pageReq = new Page<>(page, pageSize);
         LambdaQueryWrapper<Elderly> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
@@ -54,6 +54,9 @@ public class ElderlyService {
         }
         if (StringUtils.hasText(status)) {
             wrapper.eq(Elderly::getStatus, status);
+        }
+        if (StringUtils.hasText(category)) {
+            wrapper.eq(Elderly::getCategory, category);
         }
         wrapper.orderByDesc(Elderly::getCreateTime).orderByDesc(Elderly::getId);
         IPage<Elderly> result = elderlyMapper.selectPage(pageReq, wrapper);
