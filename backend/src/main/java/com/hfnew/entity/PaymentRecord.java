@@ -44,6 +44,10 @@ public class PaymentRecord {
 
     private LocalDate paymentDate;
 
+    private LocalDate validityStartDate;
+
+    private LocalDate validityEndDate;
+
     @TableLogic
     private Integer deleted;
 

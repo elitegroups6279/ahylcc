@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +30,25 @@ public class NotificationService {
         int warningDays = parseInt(systemConfigService.getConfig("fee_warning_days"), 7);
         BigDecimal shortTermDailyRate = parseBigDecimal(systemConfigService.getConfig("short_term_daily_rate"), new BigDecimal("180"));
 
+        // Pre-fetch latest ELDERLY_FEE payment validity_end_date per elderly
+        Map<Long, LocalDate> latestValidityEndMap = new HashMap<>();
+        String latestSql = """
+                SELECT elderly_id, validity_end_date
+                FROM t_payment_record
+                WHERE id IN (
+                    SELECT MAX(id) FROM t_payment_record
+                    WHERE income_type = 'ELDERLY_FEE' AND deleted = 0
+                    GROUP BY elderly_id
+                )
+                """;
+        jdbcTemplate.query(latestSql, rs -> {
+            Long eid = rs.getLong("elderly_id");
+            Date d = rs.getDate("validity_end_date");
+            if (d != null) {
+                latestValidityEndMap.put(eid, d.toLocalDate());
+            }
+        });
+
         String sql = """
                 SELECT e.id AS elderly_id,
                        e.name AS name,
@@ -42,6 +62,7 @@ public class NotificationService {
 
         YearMonth ym = YearMonth.now();
         int daysOfMonth = ym.lengthOfMonth();
+        LocalDate today = LocalDate.now();
 
         List<FeeWarningItem> all = jdbcTemplate.query(sql, (rs, rowNum) -> {
             Long elderlyId = rs.getLong("elderly_id");
@@ -49,14 +70,19 @@ public class NotificationService {
             BigDecimal balance = rs.getBigDecimal("balance");
             BigDecimal contractMonthlyFee = rs.getBigDecimal("contract_monthly_fee");
 
-            BigDecimal dailyRate = shortTermDailyRate;
-            if (contractMonthlyFee != null && contractMonthlyFee.compareTo(BigDecimal.ZERO) > 0 && daysOfMonth > 0) {
-                dailyRate = contractMonthlyFee.divide(new BigDecimal(daysOfMonth), 6, RoundingMode.HALF_UP);
-            }
-
             int remainingDays = 0;
-            if (dailyRate != null && dailyRate.compareTo(BigDecimal.ZERO) > 0 && balance != null) {
-                remainingDays = balance.divide(dailyRate, 0, RoundingMode.FLOOR).intValue();
+            LocalDate validityEndDate = latestValidityEndMap.get(elderlyId);
+            if (validityEndDate != null) {
+                remainingDays = (int) ChronoUnit.DAYS.between(today, validityEndDate);
+            } else {
+                BigDecimal dailyRate = shortTermDailyRate;
+                if (contractMonthlyFee != null && contractMonthlyFee.compareTo(BigDecimal.ZERO) > 0 && daysOfMonth > 0) {
+                    dailyRate = contractMonthlyFee.divide(new BigDecimal(daysOfMonth), 6, RoundingMode.HALF_UP);
+                }
+
+                if (dailyRate != null && dailyRate.compareTo(BigDecimal.ZERO) > 0 && balance != null) {
+                    remainingDays = balance.divide(dailyRate, 0, RoundingMode.FLOOR).intValue();
+                }
             }
 
             FeeWarningItem item = new FeeWarningItem();

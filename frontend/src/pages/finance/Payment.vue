@@ -80,6 +80,14 @@
         </el-table-column>
         <el-table-column prop="receiptNo" label="收据号" width="140" />
         <el-table-column prop="paymentDate" label="缴费时间" width="120" />
+        <el-table-column label="费用有效期" width="180">
+          <template #default="{ row }">
+            <span v-if="row.validityStartDate && row.validityEndDate">
+              {{ row.validityStartDate }} ~ {{ row.validityEndDate }}
+            </span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="记录时间" width="180" />
         <el-table-column prop="remark" label="备注" />
         <el-table-column v-if="isAdmin" label="操作" width="80">
@@ -206,6 +214,17 @@
         </el-form-item>
         <el-form-item label="缴费时间" prop="paymentDate" :rules="[{ required: true, message: '请选择缴费时间' }]">
           <el-date-picker v-model="incomeForm.paymentDate" type="date" placeholder="选择缴费时间" style="width: 100%" value-format="YYYY-MM-DD" />
+        </el-form-item>
+        <el-form-item v-if="incomeForm.incomeType === 'ELDERLY_FEE'" label="费用有效期" prop="validityRange">
+          <el-date-picker
+            v-model="incomeForm.validityRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item label="方式" prop="paymentMethod">
           <el-select v-model="incomeForm.paymentMethod" placeholder="选择方式" style="width: 220px">
@@ -337,7 +356,8 @@ const incomeForm = reactive({
   remark: '',
   incomeType: 'ELDERLY_FEE',
   description: '',
-  paymentDate: new Date().toISOString().slice(0, 10)
+  paymentDate: new Date().toISOString().slice(0, 10),
+  validityRange: null
 })
 const incomeRules = {
   incomeType: [{ required: true, message: '请选择收入类型', trigger: 'change' }],
@@ -475,6 +495,7 @@ function switchView(view) {
 function onIncomeTypeChange(val) {
   if (val !== 'ELDERLY_FEE') {
     incomeForm.elderlyId = null
+    incomeForm.validityRange = null
   } else {
     incomeForm.description = ''
   }
@@ -505,7 +526,9 @@ async function submitIncome() {
       remark: incomeForm.remark || null,
       incomeType: incomeForm.incomeType,
       description: incomeForm.incomeType !== 'ELDERLY_FEE' ? (incomeForm.description || null) : null,
-      paymentDate: incomeForm.paymentDate
+      paymentDate: incomeForm.paymentDate,
+      validityStartDate: incomeForm.validityRange && incomeForm.validityRange.length === 2 ? incomeForm.validityRange[0] : null,
+      validityEndDate: incomeForm.validityRange && incomeForm.validityRange.length === 2 ? incomeForm.validityRange[1] : null
     })
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '保存失败')
@@ -521,6 +544,7 @@ async function submitIncome() {
     incomeForm.incomeType = 'ELDERLY_FEE'
     incomeForm.description = ''
     incomeForm.paymentDate = new Date().toISOString().slice(0, 10)
+    incomeForm.validityRange = null
     // 恢复校验规则
     incomeRules.elderlyId = [{ required: true, message: '请选择老人', trigger: 'change' }]
     await loadIncome()

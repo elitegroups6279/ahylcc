@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hfnew.common.PageResult;
+import com.hfnew.dto.staff.AssignedElderlyVO;
 import com.hfnew.dto.staff.StaffCreateRequest;
 import com.hfnew.dto.staff.StaffOption;
 import com.hfnew.dto.staff.StaffUpdateRequest;
@@ -93,6 +94,10 @@ public class StaffService {
         if (s == null) throw new BizException(404, 404, "护工不存在");
         int count = loadActiveElderlyCount(List.of(id)).getOrDefault(id, 0);
         return toVO(s, count);
+    }
+
+    public List<AssignedElderlyVO> getAssignedElderly(Long staffId) {
+        return staffAssignmentMapper.selectAssignedElderlyByStaffId(staffId);
     }
 
     @Transactional

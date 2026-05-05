@@ -101,6 +101,10 @@ public class PaymentService {
         record.setIncomeType(request.getIncomeType());
         record.setDescription(request.getDescription());
         record.setPaymentDate(request.getPaymentDate());
+        if (isElderlyFee) {
+            record.setValidityStartDate(request.getValidityStartDate());
+            record.setValidityEndDate(request.getValidityEndDate());
+        }
         paymentRecordMapper.insert(record);
 
         // 仅当 elderlyId 有值时才更新老人费用账户
@@ -171,22 +175,39 @@ public class PaymentService {
         int warningDays = parseInt(systemConfigService.getConfig("fee_warning_days"), 7);
         BigDecimal shortTermDailyRate = parseBigDecimal(systemConfigService.getConfig("short_term_daily_rate"), new BigDecimal("180"));
 
-        BigDecimal contractMonthlyFee = jdbcTemplate.queryForObject(
-                "SELECT contract_monthly_fee FROM t_elderly WHERE id = ? AND deleted = 0",
-                BigDecimal.class,
+        // Check latest ELDERLY_FEE payment validity_end_date
+        java.time.LocalDate validityEndDate = jdbcTemplate.query(
+                "SELECT validity_end_date FROM t_payment_record WHERE elderly_id = ? AND income_type = 'ELDERLY_FEE' AND deleted = 0 ORDER BY create_time DESC LIMIT 1",
+                rs -> {
+                    if (rs.next()) {
+                        java.sql.Date d = rs.getDate("validity_end_date");
+                        return d != null ? d.toLocalDate() : null;
+                    }
+                    return null;
+                },
                 elderlyId
         );
 
-        YearMonth ym = YearMonth.now();
-        int daysOfMonth = ym.lengthOfMonth();
-        BigDecimal dailyRate = shortTermDailyRate;
-        if (contractMonthlyFee != null && contractMonthlyFee.compareTo(BigDecimal.ZERO) > 0 && daysOfMonth > 0) {
-            dailyRate = contractMonthlyFee.divide(new BigDecimal(daysOfMonth), 6, RoundingMode.HALF_UP);
-        }
-
         int remainingDays = 0;
-        if (dailyRate != null && dailyRate.compareTo(BigDecimal.ZERO) > 0 && balance != null) {
-            remainingDays = balance.divide(dailyRate, 0, RoundingMode.FLOOR).intValue();
+        if (validityEndDate != null) {
+            remainingDays = (int) java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), validityEndDate);
+        } else {
+            BigDecimal contractMonthlyFee = jdbcTemplate.queryForObject(
+                    "SELECT contract_monthly_fee FROM t_elderly WHERE id = ? AND deleted = 0",
+                    BigDecimal.class,
+                    elderlyId
+            );
+
+            YearMonth ym = YearMonth.now();
+            int daysOfMonth = ym.lengthOfMonth();
+            BigDecimal dailyRate = shortTermDailyRate;
+            if (contractMonthlyFee != null && contractMonthlyFee.compareTo(BigDecimal.ZERO) > 0 && daysOfMonth > 0) {
+                dailyRate = contractMonthlyFee.divide(new BigDecimal(daysOfMonth), 6, RoundingMode.HALF_UP);
+            }
+
+            if (dailyRate != null && dailyRate.compareTo(BigDecimal.ZERO) > 0 && balance != null) {
+                remainingDays = balance.divide(dailyRate, 0, RoundingMode.FLOOR).intValue();
+            }
         }
         return remainingDays < warningDays ? 1 : 0;
     }
@@ -220,6 +241,8 @@ public class PaymentService {
         vo.setIncomeType(r.getIncomeType());
         vo.setDescription(r.getDescription());
         vo.setPaymentDate(r.getPaymentDate());
+        vo.setValidityStartDate(r.getValidityStartDate());
+        vo.setValidityEndDate(r.getValidityEndDate());
         vo.setCreateTime(r.getCreateTime());
         return vo;
     }

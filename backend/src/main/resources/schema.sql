@@ -291,6 +291,8 @@ CREATE TABLE IF NOT EXISTS t_payment_record (
   receipt_no VARCHAR(50),
   operator_id BIGINT COMMENT '操作员ID',
   payment_date DATE COMMENT '缴费时间',
+  validity_start_date DATE COMMENT '费用有效期开始',
+  validity_end_date DATE COMMENT '费用有效期结束',
   remark VARCHAR(200),
   org_id BIGINT COMMENT '所属机构ID',
   deleted TINYINT DEFAULT 0,

@@ -21,5 +21,7 @@ public class PaymentVO {
     private String incomeType;
     private String description;
     private LocalDate paymentDate;
+    private LocalDate validityStartDate;
+    private LocalDate validityEndDate;
     private LocalDateTime createTime;
 }

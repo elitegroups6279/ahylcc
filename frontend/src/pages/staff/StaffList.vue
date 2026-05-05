@@ -25,7 +25,11 @@
         </el-table-column>
         <el-table-column prop="age" label="年龄" width="80" />
         <el-table-column prop="hireDate" label="入职日期" width="140" />
-        <el-table-column prop="elderlyCount" label="负责老人" width="100" />
+        <el-table-column label="负责老人" width="100">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openAssignedElderly(row)">{{ row.elderlyCount }}</el-button>
+          </template>
+        </el-table-column>
         <el-table-column label="实习状态" prop="probationStatus" width="100">
           <template #default="{ row }">
             <el-tag v-if="row.probationStatus === 'INTERN'" type="warning" size="small">实习</el-tag>
@@ -71,6 +75,19 @@
         />
       </div>
     </el-card>
+
+    <el-dialog v-model="elderlyDialogVisible" :title="`${currentStaffName} 负责老人列表`" width="720px">
+      <el-table :data="assignedElderlyList" v-loading="elderlyDialogLoading" row-key="id">
+        <el-table-column prop="uniqueNo" label="编号" width="140" />
+        <el-table-column prop="name" label="姓名" width="120" />
+        <el-table-column prop="bedNumber" label="床位" width="100" />
+        <el-table-column prop="disabilityLevel" label="失能等级" width="100" />
+        <el-table-column prop="category" label="类别" width="100" />
+        <el-table-column label="分配类型" width="100">
+          <template #default="{ row }">{{ row.assignType === 'PRIMARY' ? '主责' : row.assignType === 'SECONDARY' ? '备用' : row.assignType }}</template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
 
     <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '新增护工' : '编辑护工'" width="560px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
@@ -168,6 +185,11 @@ const dialogMode = ref('create')
 const formRef = ref()
 const hireDateSetOnce = ref(false)
 
+const elderlyDialogVisible = ref(false)
+const elderlyDialogLoading = ref(false)
+const assignedElderlyList = ref([])
+const currentStaffName = ref('')
+
 const form = reactive({
   id: null,
   name: '',
@@ -252,6 +274,22 @@ function openCreate() {
   resetForm()
   hireDateSetOnce.value = false
   dialogVisible.value = true
+}
+
+async function openAssignedElderly(row) {
+  currentStaffName.value = row.name
+  elderlyDialogVisible.value = true
+  elderlyDialogLoading.value = true
+  try {
+    const resp = await api.get(`/api/staff/${row.id}/elderly`)
+    const body = resp.data
+    if (body.code !== 200) throw new Error(body.msg || '加载失败')
+    assignedElderlyList.value = body.data || []
+  } catch (e) {
+    ElMessage.error(e.message || '加载失败')
+  } finally {
+    elderlyDialogLoading.value = false
+  }
 }
 
 async function openEdit(row) {

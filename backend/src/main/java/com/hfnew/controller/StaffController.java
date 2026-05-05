@@ -3,6 +3,7 @@ package com.hfnew.controller;
 import com.hfnew.common.ApiResponse;
 import com.hfnew.common.PageResult;
 import com.hfnew.config.OpLog;
+import com.hfnew.dto.staff.AssignedElderlyVO;
 import com.hfnew.dto.staff.StaffCreateRequest;
 import com.hfnew.dto.staff.StaffOption;
 import com.hfnew.dto.staff.StaffUpdateRequest;
@@ -48,6 +49,11 @@ public class StaffController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<StaffVO>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(staffService.getById(id)));
+    }
+
+    @GetMapping("/{staffId}/elderly")
+    public ResponseEntity<ApiResponse<List<AssignedElderlyVO>>> getAssignedElderly(@PathVariable Long staffId) {
+        return ResponseEntity.ok(ApiResponse.success(staffService.getAssignedElderly(staffId)));
     }
 
     @PostMapping
