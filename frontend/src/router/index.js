@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../store/auth'
+import { useAuthStore, isTokenExpired } from '../store/auth'
 import NProgress from 'nprogress'
 
 const routes = [
@@ -236,14 +236,16 @@ const router = createRouter({
   routes
 })
 
+let validatedOnBoot = false
+
 router.beforeEach(async (to, from, next) => {
   NProgress.start()
-  
+
   const authStore = useAuthStore()
 
   // 去登录页：若已登录则直接去 dashboard
   if (to.path === '/login') {
-    if (authStore.accessToken) {
+    if (authStore.accessToken && !isTokenExpired(authStore.accessToken)) {
       NProgress.done()
       return next('/dashboard')
     }
@@ -259,6 +261,26 @@ router.beforeEach(async (to, from, next) => {
   if (!authStore.accessToken) {
     NProgress.done()
     return next('/login')
+  }
+
+  // 首次导航（页面刷新后）：验证 token 有效性并同步用户状态
+  if (!validatedOnBoot) {
+    validatedOnBoot = true
+    const valid = await authStore.validateAndRefreshToken()
+    if (!valid) {
+      NProgress.done()
+      return next('/login')
+    }
+  }
+
+  // 本地检查 token 是否过期
+  if (isTokenExpired(authStore.accessToken)) {
+    const refreshed = await authStore.tryRefreshToken()
+    if (!refreshed) {
+      authStore.clear()
+      NProgress.done()
+      return next('/login')
+    }
   }
 
   try {
@@ -278,7 +300,7 @@ router.beforeEach(async (to, from, next) => {
   // 权限拦截（基于 permissions 字符串集合）
   // 超级管理员跳过权限检查
   const isSuperAdmin = authStore.permissions.includes('*')
-  
+
   if (!isSuperAdmin && to.meta?.permission && !authStore.permissions.includes(to.meta.permission)) {
     NProgress.done()
     return next('/forbidden')

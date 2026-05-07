@@ -3,6 +3,22 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from './store/auth'
+
+const authStore = useAuthStore()
+const router = useRouter()
+
+onMounted(async () => {
+  // 如果本地有 token，在应用初始化时验证其有效性
+  if (authStore.accessToken) {
+    const valid = await authStore.validateAndRefreshToken()
+    if (!valid) {
+      router.push('/login')
+    }
+  }
+})
 </script>
 
 <style>

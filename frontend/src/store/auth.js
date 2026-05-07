@@ -5,6 +5,16 @@ import { apiRaw, api } from '../api/client'
 const ACCESS_KEY = 'hf_access_token'
 const REFRESH_KEY = 'hf_refresh_token'
 
+export function isTokenExpired(token) {
+  if (!token) return true
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.exp * 1000 < Date.now()
+  } catch (e) {
+    return true
+  }
+}
+
 // 兜底菜单数据（后端 API 未就绪时使用）
 const fallbackMenus = [
   {
@@ -207,20 +217,75 @@ export const useAuthStore = defineStore('auth', {
       this.clear()
     },
 
-    async refreshAccessToken() {
-      if (!this.refreshToken) return false
+    async tryRefreshToken() {
+      if (!this.refreshToken) {
+        this.clear()
+        return false
+      }
       try {
         const resp = await apiRaw.post('/api/auth/refresh', { refreshToken: this.refreshToken }, { skipRefresh: true })
         const body = resp.data
-        if (body.code !== 200) return false
-        const newAccessToken = body.data.accessToken
-        if (!newAccessToken) return false
-        this.persistTokens(newAccessToken, this.refreshToken)
+        if (body.code !== 200 || !body.data?.accessToken) {
+          this.clear()
+          return false
+        }
+        this.persistTokens(body.data.accessToken, this.refreshToken)
         return true
       } catch (e) {
         this.clear()
         return false
       }
+    },
+
+    async refreshAccessToken() {
+      return this.tryRefreshToken()
+    },
+
+    async validateAndRefreshToken() {
+      const token = this.accessToken
+      if (!token) {
+        this.clear()
+        return false
+      }
+
+      // 如果本地已判定过期，先尝试刷新
+      if (isTokenExpired(token)) {
+        const refreshed = await this.tryRefreshToken()
+        if (!refreshed) return false
+      }
+
+      // 调用 /api/auth/me 验证 token 有效性并同步用户状态
+      try {
+        const resp = await api.get('/api/auth/me')
+        const body = resp.data
+        if (body.code === 200 && body.data) {
+          this.userInfo = body.data
+          if (!this.user) this.user = body.data
+          return true
+        }
+      } catch (err) {
+        const status = err?.response?.status
+        if (status === 401) {
+          const refreshed = await this.tryRefreshToken()
+          if (refreshed) {
+            // 刷新成功后重试验证
+            try {
+              const resp2 = await api.get('/api/auth/me')
+              const body2 = resp2.data
+              if (body2.code === 200 && body2.data) {
+                this.userInfo = body2.data
+                if (!this.user) this.user = body2.data
+                return true
+              }
+            } catch (e2) {
+              // 二次验证失败，清理状态
+            }
+          }
+        }
+      }
+
+      this.clear()
+      return false
     },
 
     async fetchPermissions() {

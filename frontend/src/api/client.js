@@ -28,6 +28,15 @@ api.interceptors.request.use((config) => {
 let isRefreshing = false
 let refreshPromise = null
 
+function redirectToLogin() {
+  const authStore = getAuthStore()
+  authStore.clear()
+  // 避免在非浏览器环境或已处于登录页时重复跳转
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.href = '/login'
+  }
+}
+
 api.interceptors.response.use(
   (resp) => resp,
   async (err) => {
@@ -38,7 +47,7 @@ api.interceptors.response.use(
     if (status === 401 && originalConfig && !originalConfig._retry && !originalConfig.skipRefresh) {
       originalConfig._retry = true
 
-      // 防止并发刷新
+      // 防止并发刷新：所有挂起请求共享同一个刷新 Promise
       if (!isRefreshing) {
         isRefreshing = true
         refreshPromise = authStore
@@ -46,18 +55,20 @@ api.interceptors.response.use(
           .catch(() => null)
           .finally(() => {
             isRefreshing = false
+            refreshPromise = null
           })
       }
 
       const refreshOk = await refreshPromise
       if (refreshOk) {
-        // 刷新成功：更新header后重试原请求
+        // 刷新成功：更新 header 后重试原请求
         originalConfig.headers = originalConfig.headers || {}
         originalConfig.headers.Authorization = `Bearer ${authStore.accessToken}`
         return api(originalConfig)
       }
 
-      // refresh 失败：清空 token，交给路由守卫跳 login
+      // refresh 失败：立即清空状态并重定向到登录页
+      redirectToLogin()
       return Promise.reject(err)
     }
 
