@@ -30,6 +30,21 @@
             <el-button :disabled="selectedIds.length === 0" @click="batchConfirm">
               批量确认
             </el-button>
+            <el-button
+              type="warning"
+              :disabled="selectedConfirmedIds.length === 0"
+              @click="batchSettle"
+            >
+              批量结算
+            </el-button>
+            <el-button
+              v-if="billMonth"
+              type="danger"
+              plain
+              @click="settleMonth"
+            >
+              结算{{ billMonth }}全部已确认
+            </el-button>
           </div>
         </div>
       </template>
@@ -109,7 +124,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="showDetail(row)">明细</el-button>
             <el-button
@@ -119,6 +134,14 @@
               @click="confirmBill(row)"
             >
               确认
+            </el-button>
+            <el-button
+              v-if="row.status === 'CONFIRMED'"
+              link
+              type="warning"
+              @click="settleBill(row)"
+            >
+              结算
             </el-button>
           </template>
         </el-table-column>
@@ -204,6 +227,7 @@ const billMonth = ref(new Date().toISOString().slice(0, 7))
 const statusFilter = ref('')
 
 const selectedIds = ref([])
+const selectedConfirmedIds = ref([])
 const detailVisible = ref(false)
 const currentBill = ref({})
 const currentSubsidyDetails = ref([])
@@ -285,6 +309,81 @@ async function confirmBill(row) {
   }
 }
 
+async function settleBill(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确认结算老人【${row.elderlyName}】的 ${row.billMonth} 账单？将从账户余额扣除 ¥${formatAmount(row.familyPayable)}。`,
+      '结算账单',
+      { type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    const resp = await api.put(`/api/finance/bills/${row.id}/settle`)
+    const body = resp.data
+    if (body.code !== 200) throw new Error(body.msg || '结算失败')
+    ElMessage.success('结算成功')
+    await fetchList()
+  } catch (e) {
+    ElMessage.error(e.message || '结算失败')
+  }
+}
+
+async function batchSettle() {
+  if (selectedConfirmedIds.value.length === 0) return
+  try {
+    await ElMessageBox.confirm(
+      `确认批量结算 ${selectedConfirmedIds.value.length} 条已确认账单？将从各账户余额扣除对应费用。`,
+      '批量结算',
+      { type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  let successCount = 0
+  let failCount = 0
+  for (const id of selectedConfirmedIds.value) {
+    try {
+      const resp = await api.put(`/api/finance/bills/${id}/settle`)
+      if (resp.data.code === 200) {
+        successCount++
+      } else {
+        failCount++
+      }
+    } catch {
+      failCount++
+    }
+  }
+  if (successCount > 0) ElMessage.success(`成功结算 ${successCount} 条`)
+  if (failCount > 0) ElMessage.warning(`${failCount} 条结算失败`)
+  await fetchList()
+}
+
+async function settleMonth() {
+  if (!billMonth.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确认结算 ${billMonth.value} 的所有已确认账单？`,
+      '月度批量结算',
+      { type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    const resp = await api.post('/api/finance/bills/settle-month', null, {
+      params: { billMonth: billMonth.value }
+    })
+    const body = resp.data
+    if (body.code !== 200) throw new Error(body.msg || '结算失败')
+    ElMessage.success(`成功结算 ${body.data || 0} 条账单`)
+    await fetchList()
+  } catch (e) {
+    ElMessage.error(e.message || '结算失败')
+  }
+}
+
 async function batchConfirm() {
   if (selectedIds.value.length === 0) return
   try {
@@ -317,6 +416,7 @@ async function batchConfirm() {
 
 function handleSelectionChange(rows) {
   selectedIds.value = rows.filter(r => r.status === 'DRAFT').map(r => r.id)
+  selectedConfirmedIds.value = rows.filter(r => r.status === 'CONFIRMED').map(r => r.id)
 }
 
 function showDetail(row) {

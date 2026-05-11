@@ -42,6 +42,20 @@ public class FeeBillController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    @PutMapping("/{id}/settle")
+    @OpLog(module = "收支管理", operation = "结算账单")
+    public ResponseEntity<ApiResponse<Object>> settle(@PathVariable Long id) {
+        feeBillService.settle(id);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PostMapping("/settle-month")
+    @OpLog(module = "收支管理", operation = "批量结算月份账单")
+    public ResponseEntity<ApiResponse<Integer>> settleMonth(@RequestParam String billMonth) {
+        int count = feeBillService.settleAllConfirmed(billMonth);
+        return ResponseEntity.ok(ApiResponse.success(count));
+    }
+
     @GetMapping("/subsidy-summary")
     public ResponseEntity<ApiResponse<Map<String, Object>>> subsidySummary(@RequestParam(required = false) String month) {
         return ResponseEntity.ok(ApiResponse.success(feeBillService.getSubsidySummary(month)));

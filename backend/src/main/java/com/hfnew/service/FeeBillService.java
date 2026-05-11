@@ -1,6 +1,7 @@
 package com.hfnew.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,11 +9,13 @@ import com.hfnew.common.PageResult;
 import com.hfnew.dto.finance.FeeBillVO;
 import com.hfnew.entity.Elderly;
 import com.hfnew.entity.ElderlyLeave;
+import com.hfnew.entity.FeeAccount;
 import com.hfnew.entity.FeeBill;
 import com.hfnew.entity.SubsidyPolicy;
 import com.hfnew.exception.BizException;
 import com.hfnew.mapper.ElderlyLeaveMapper;
 import com.hfnew.mapper.ElderlyMapper;
+import com.hfnew.mapper.FeeAccountMapper;
 import com.hfnew.mapper.FeeBillMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -40,6 +43,7 @@ public class FeeBillService {
     private final FeeBillMapper feeBillMapper;
     private final ElderlyMapper elderlyMapper;
     private final ElderlyLeaveMapper elderlyLeaveMapper;
+    private final FeeAccountMapper feeAccountMapper;
     private final JdbcTemplate jdbcTemplate;
     private final SystemConfigService systemConfigService;
     private final SubsidyPolicyService subsidyPolicyService;
@@ -294,7 +298,7 @@ public class FeeBillService {
         }
         // 使用条件更新防止并发
         int updated = feeBillMapper.update(null,
-            new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<FeeBill>()
+            new LambdaUpdateWrapper<FeeBill>()
                 .eq(FeeBill::getId, id)
                 .eq(FeeBill::getStatus, "DRAFT")
                 .set(FeeBill::getStatus, "CONFIRMED")
@@ -302,6 +306,158 @@ public class FeeBillService {
         if (updated == 0) {
             throw new BizException(409, 409, "账单已被其他操作修改，请刷新后重试");
         }
+    }
+
+    /**
+     * 结算单张账单：从老人费用账户扣除家属应缴金额
+     * 仅 CONFIRMED 状态账单可结算
+     */
+    @Transactional
+    public FeeBill settle(Long billId) {
+        FeeBill bill = feeBillMapper.selectById(billId);
+        if (bill == null) throw new BizException(404, 404, "账单不存在");
+        if (!Objects.equals(bill.getStatus(), "CONFIRMED")) {
+            throw new BizException(400, 400, "只有已确认状态的账单才能结算");
+        }
+
+        BigDecimal deductAmount = bill.getFamilyPayable() != null ? bill.getFamilyPayable() : BigDecimal.ZERO;
+
+        // 获取或创建费用账户
+        FeeAccount account = getOrCreateFeeAccount(bill.getElderlyId());
+        BigDecimal balance = account.getBalance() != null ? account.getBalance() : BigDecimal.ZERO;
+        BigDecimal totalConsumed = account.getTotalConsumed() != null ? account.getTotalConsumed() : BigDecimal.ZERO;
+
+        // 扣减余额，累计消费
+        account.setBalance(balance.subtract(deductAmount));
+        account.setTotalConsumed(totalConsumed.add(deductAmount));
+        account.setWarningStatus(calcWarningStatus(bill.getElderlyId(), account.getBalance()));
+        feeAccountMapper.updateById(account);
+
+        // 更新账单状态为 SETTLED，设置 amount_paid
+        int updated = feeBillMapper.update(null,
+            new LambdaUpdateWrapper<FeeBill>()
+                .eq(FeeBill::getId, billId)
+                .eq(FeeBill::getStatus, "CONFIRMED")
+                .set(FeeBill::getStatus, "SETTLED")
+                .set(FeeBill::getAmountPaid, deductAmount)
+        );
+        if (updated == 0) {
+            throw new BizException(409, 409, "账单状态已变更，请刷新后重试");
+        }
+
+        bill.setStatus("SETTLED");
+        bill.setAmountPaid(deductAmount);
+        return bill;
+    }
+
+    /**
+     * 批量结算指定月份的所有已确认账单
+     */
+    @Transactional
+    public int settleAllConfirmed(String billMonth) {
+        YearMonth ym = parseBillMonth(billMonth);
+        List<FeeBill> confirmedBills = feeBillMapper.selectList(
+            new LambdaQueryWrapper<FeeBill>()
+                .eq(FeeBill::getBillMonth, ym.toString())
+                .eq(FeeBill::getStatus, "CONFIRMED")
+        );
+        int count = 0;
+        for (FeeBill bill : confirmedBills) {
+            try {
+                settle(bill.getId());
+                count++;
+            } catch (Exception e) {
+                // 跳过单张失败，继续处理其他账单
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 结算所有指定月份之前（不包含）的 CONFIRMED 账单
+     * 由调度任务调用，确保每月自动清算历史账单
+     */
+    @Transactional
+    public int settleAllConfirmedBeforeMonth(String beforeMonth) {
+        YearMonth before = YearMonth.parse(beforeMonth);
+        List<FeeBill> confirmedBills = feeBillMapper.selectList(
+            new LambdaQueryWrapper<FeeBill>()
+                .eq(FeeBill::getStatus, "CONFIRMED")
+                .lt(FeeBill::getBillMonth, before.toString())
+        );
+        int count = 0;
+        for (FeeBill bill : confirmedBills) {
+            try {
+                settle(bill.getId());
+                count++;
+            } catch (Exception e) {
+                // 跳过单张失败，继续处理其他账单
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 自动确认指定月份所有 DRAFT 账单
+     */
+    @Transactional
+    public int confirmAllDraft(String billMonth) {
+        YearMonth ym = parseBillMonth(billMonth);
+        List<FeeBill> draftBills = feeBillMapper.selectList(
+            new LambdaQueryWrapper<FeeBill>()
+                .eq(FeeBill::getBillMonth, ym.toString())
+                .eq(FeeBill::getStatus, "DRAFT")
+        );
+        int count = 0;
+        for (FeeBill bill : draftBills) {
+            try {
+                confirm(bill.getId());
+                count++;
+            } catch (Exception e) {
+                // 跳过单张失败
+            }
+        }
+        return count;
+    }
+
+    private FeeAccount getOrCreateFeeAccount(Long elderlyId) {
+        LambdaQueryWrapper<FeeAccount> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(FeeAccount::getElderlyId, elderlyId);
+        FeeAccount account = feeAccountMapper.selectOne(wrapper);
+        if (account != null) return account;
+        FeeAccount a = new FeeAccount();
+        a.setElderlyId(elderlyId);
+        a.setBalance(BigDecimal.ZERO);
+        a.setTotalCharged(BigDecimal.ZERO);
+        a.setTotalConsumed(BigDecimal.ZERO);
+        a.setCarryOver(BigDecimal.ZERO);
+        a.setWarningStatus(0);
+        feeAccountMapper.insert(a);
+        return a;
+    }
+
+    private Integer calcWarningStatus(Long elderlyId, BigDecimal balance) {
+        int warningDays = parseInt(systemConfigService.getConfig("fee_warning_days"), 7);
+        BigDecimal shortTermDailyRate = parseBigDecimal(systemConfigService.getConfig("short_term_daily_rate"), new BigDecimal("180"));
+        BigDecimal contractMonthlyFee = jdbcTemplate.queryForObject(
+                "SELECT contract_monthly_fee FROM t_elderly WHERE id = ? AND deleted = 0",
+                BigDecimal.class, elderlyId);
+        java.time.YearMonth ym = java.time.YearMonth.now();
+        int daysOfMonth = ym.lengthOfMonth();
+        BigDecimal dailyRate = shortTermDailyRate;
+        if (contractMonthlyFee != null && contractMonthlyFee.compareTo(BigDecimal.ZERO) > 0) {
+            dailyRate = contractMonthlyFee.divide(new BigDecimal(daysOfMonth), 6, java.math.RoundingMode.HALF_UP);
+        }
+        int remainingDays = 0;
+        if (dailyRate.compareTo(BigDecimal.ZERO) > 0 && balance != null) {
+            remainingDays = balance.divide(dailyRate, 0, java.math.RoundingMode.FLOOR).intValue();
+        }
+        return remainingDays < warningDays ? 1 : 0;
+    }
+
+    private static int parseInt(String value, int defaultValue) {
+        if (value == null || value.isBlank()) return defaultValue;
+        try { return Integer.parseInt(value.trim()); } catch (Exception e) { return defaultValue; }
     }
 
     // ===== 辅助方法 =====
