@@ -190,10 +190,15 @@ public class DashboardController {
             Elderly e = elderlyMapper.selectById(leave.getElderlyId());
             if (e == null) continue;
 
-            // 对于已销假(RETURNED)的记录，使用return_date作为结束日期；否则使用end_date
+            // 对于已销假(RETURNED)的记录，使用return_date作为结束日期
+            // 对于仍在请假(ON_LEAVE)的记录，显示到今天（或月末，取较早者）
             LocalDate leaveEnd;
             if ("RETURNED".equals(leave.getStatus()) && leave.getReturnDate() != null) {
                 leaveEnd = leave.getReturnDate();
+            } else if ("ON_LEAVE".equals(leave.getStatus())) {
+                // Active leave: show through today (or monthEnd if today is after monthEnd)
+                LocalDate today = LocalDate.now();
+                leaveEnd = today.isBefore(monthEnd) ? today : monthEnd;
             } else {
                 leaveEnd = leave.getEndDate();
             }
