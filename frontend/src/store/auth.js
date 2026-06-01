@@ -256,7 +256,7 @@ export const useAuthStore = defineStore('auth', {
 
       // 调用 /api/auth/me 验证 token 有效性并同步用户状态
       try {
-        const resp = await api.get('/api/auth/me')
+        const resp = await api.get('/api/auth/me', { skipRefresh: true })
         const body = resp.data
         if (body.code === 200 && body.data) {
           this.userInfo = body.data
@@ -270,7 +270,7 @@ export const useAuthStore = defineStore('auth', {
           if (refreshed) {
             // 刷新成功后重试验证
             try {
-              const resp2 = await api.get('/api/auth/me')
+              const resp2 = await api.get('/api/auth/me', { skipRefresh: true })
               const body2 = resp2.data
               if (body2.code === 200 && body2.data) {
                 this.userInfo = body2.data
