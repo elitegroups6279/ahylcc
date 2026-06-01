@@ -67,9 +67,9 @@ api.interceptors.response.use(
         return api(originalConfig)
       }
 
-      // refresh 失败：立即清空状态并重定向到登录页
+      // refresh 失败：静默重定向到登录页，不抛出错误
       redirectToLogin()
-      return Promise.reject(err)
+      return new Promise(() => {}) // 挂起 promise，不触发调用方的 catch
     }
 
     return Promise.reject(err)
