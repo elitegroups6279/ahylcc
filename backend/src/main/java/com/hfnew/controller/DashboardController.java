@@ -190,6 +190,11 @@ public class DashboardController {
             Elderly e = elderlyMapper.selectById(leave.getElderlyId());
             if (e == null) continue;
 
+            // 退住的老人不再显示请假状态
+            if ("DISCHARGED".equals(e.getStatus())) {
+                continue;
+            }
+
             // 对于已销假(RETURNED)的记录，使用return_date作为结束日期
             // 对于仍在请假(ON_LEAVE)的记录，显示到今天（或月末，取较早者）
             LocalDate leaveEnd;

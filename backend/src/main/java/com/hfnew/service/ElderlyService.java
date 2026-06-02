@@ -1,6 +1,7 @@
 package com.hfnew.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hfnew.common.PageResult;
@@ -43,6 +44,7 @@ public class ElderlyService {
     private final BedTransferMapper bedTransferMapper;
     private final FeeAccountMapper feeAccountMapper;
     private final ElderlyChangeLogMapper changeLogMapper;
+    private final ElderlyLeaveMapper elderlyLeaveMapper;
     private final BedService bedService;
     private final JdbcTemplate jdbcTemplate;
 
@@ -242,6 +244,16 @@ public class ElderlyService {
         }
         
         String operator = getCurrentOperator();
+
+        // 如果老人当前是请假状态，退住时自动结束请假记录
+        if ("ON_LEAVE".equals(e.getStatus())) {
+            LambdaUpdateWrapper<ElderlyLeave> leaveWrapper = new LambdaUpdateWrapper<>();
+            leaveWrapper.eq(ElderlyLeave::getElderlyId, id)
+                       .eq(ElderlyLeave::getStatus, "ON_LEAVE")
+                       .set(ElderlyLeave::getStatus, "RETURNED")
+                       .set(ElderlyLeave::getReturnDate, request.getDischargeDate() != null ? request.getDischargeDate() : LocalDate.now());
+            elderlyLeaveMapper.update(null, leaveWrapper);
+        }
         
         // 记录状态变更日志
         logChange(id, "status", "状态", "在住", "退住", operator);
