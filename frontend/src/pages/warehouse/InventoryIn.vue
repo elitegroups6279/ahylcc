@@ -24,7 +24,24 @@
           <template #default="{ row }">￥{{ formatAmount(row.totalAmount) }}</template>
         </el-table-column>
         <el-table-column prop="inDate" label="入库日期" width="140" />
+        <el-table-column prop="supplyCategory" label="供应类别" width="140">
+          <template #default="{ row }">{{ supplyCategoryLabel(row.supplyCategory) }}</template>
+        </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="200" />
+        <el-table-column v-if="isAdmin" label="操作" width="140" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="openEdit(row)">
+              <el-icon><Edit /></el-icon> 编辑
+            </el-button>
+            <el-popconfirm title="确定删除该入库记录？" @confirm="doDelete(row.id)">
+              <template #reference>
+                <el-button type="danger" link size="small">
+                  <el-icon><Delete /></el-icon> 删除
+                </el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pager">
@@ -41,7 +58,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" title="新增入库" width="640px">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '修改入库' : '新增入库'" width="640px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="物资" prop="materialId">
           <el-select
@@ -76,8 +93,19 @@
         <el-form-item label="采购单号" prop="purchaseOrderNo">
           <el-input v-model="form.purchaseOrderNo" />
         </el-form-item>
-        <el-form-item label="附件URL" prop="attachmentUrl">
-          <el-input v-model="form.attachmentUrl" />
+        <el-form-item label="供应类别" prop="supplyCategory">
+          <el-select v-model="form.supplyCategory" style="width: 100%">
+            <el-option label="社会化物资" value="SOCIAL" />
+            <el-option label="集中供养物资" value="CENTRALIZED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="!editingId" label="同步生成支出">
+          <el-switch v-model="form.syncExpense" active-text="是" inactive-text="否" />
+        </el-form-item>
+        <el-form-item v-if="!editingId && form.syncExpense" label="出账账户" prop="bankAccountId">
+          <el-select v-model="form.bankAccountId" placeholder="选择出账账户" style="width: 100%">
+            <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" :rows="3" />
@@ -92,9 +120,17 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Edit, Delete } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
+import { useAuthStore } from '../../store/auth'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => {
+  const roles = authStore.user?.roles || authStore.userInfo?.roles || []
+  return roles.includes('ADMIN') || roles.includes('SUPER_ADMIN')
+})
 
 const loading = ref(false)
 const saving = ref(false)
@@ -105,6 +141,7 @@ const pageSize = ref(10)
 
 const dialogVisible = ref(false)
 const formRef = ref()
+const editingId = ref(null)
 const form = reactive({
   materialId: null,
   supplier: '',
@@ -113,8 +150,10 @@ const form = reactive({
   unitPrice: 0,
   totalAmount: null,
   inDate: '',
-  attachmentUrl: '',
-  remark: ''
+  supplyCategory: 'SOCIAL',
+  remark: '',
+  syncExpense: false,
+  bankAccountId: null
 })
 
 const rules = {
@@ -124,12 +163,29 @@ const rules = {
 
 const materialLoading = ref(false)
 const materialOptions = ref([])
+const bankAccounts = ref([])
 
 function formatAmount(amount) {
   if (amount === null || amount === undefined) return '0.00'
   const n = Number(amount)
   if (Number.isNaN(n)) return String(amount)
   return n.toFixed(2)
+}
+
+function supplyCategoryLabel(cat) {
+  if (cat === 'CENTRALIZED') return '集中供养物资'
+  if (cat === 'SOCIAL') return '社会化物资'
+  return cat || '社会化物资'
+}
+
+async function loadBankAccounts() {
+  try {
+    const resp = await api.get('/api/finance/bank-accounts')
+    const body = resp.data
+    if (body.code === 200) bankAccounts.value = body.data || []
+  } catch (e) {
+    console.warn('加载银行账户失败', e)
+  }
 }
 
 async function searchMaterials(query) {
@@ -163,7 +219,7 @@ async function fetchList() {
   }
 }
 
-function openCreate() {
+function resetForm() {
   const today = new Date()
   const yyyy = today.getFullYear()
   const mm = String(today.getMonth() + 1).padStart(2, '0')
@@ -175,10 +231,47 @@ function openCreate() {
   form.unitPrice = 0
   form.totalAmount = null
   form.inDate = `${yyyy}-${mm}-${dd}`
-  form.attachmentUrl = ''
+  form.supplyCategory = 'SOCIAL'
   form.remark = ''
+  form.syncExpense = false
+  form.bankAccountId = null
+}
+
+function openCreate() {
+  editingId.value = null
+  resetForm()
   dialogVisible.value = true
   searchMaterials('')
+  loadBankAccounts()
+}
+
+function openEdit(row) {
+  editingId.value = row.id
+  form.materialId = row.materialId
+  form.supplier = row.supplier || ''
+  form.purchaseOrderNo = row.purchaseOrderNo || ''
+  form.quantity = row.quantity || 1
+  form.unitPrice = row.unitPrice || 0
+  form.totalAmount = row.totalAmount
+  form.inDate = row.inDate || ''
+  form.supplyCategory = row.supplyCategory || 'SOCIAL'
+  form.remark = row.remark || ''
+  form.syncExpense = false
+  form.bankAccountId = null
+  dialogVisible.value = true
+  searchMaterials('')
+}
+
+async function doDelete(id) {
+  try {
+    const resp = await api.delete(`/api/warehouse/in/${id}`)
+    const body = resp.data
+    if (body.code !== 200) throw new Error(body.msg || '删除失败')
+    ElMessage.success('删除成功')
+    await fetchList()
+  } catch (e) {
+    ElMessage.error(e.message || '删除失败')
+  }
 }
 
 async function submit() {
@@ -186,7 +279,7 @@ async function submit() {
   await formRef.value.validate()
   saving.value = true
   try {
-    const resp = await api.post('/api/warehouse/in', {
+    const payload = {
       materialId: form.materialId,
       supplier: form.supplier || null,
       purchaseOrderNo: form.purchaseOrderNo || null,
@@ -194,12 +287,22 @@ async function submit() {
       unitPrice: form.unitPrice,
       totalAmount: form.totalAmount,
       inDate: form.inDate,
-      attachmentUrl: form.attachmentUrl || null,
+      supplyCategory: form.supplyCategory,
       remark: form.remark || null
-    })
+    }
+    let resp
+    if (editingId.value) {
+      resp = await api.put(`/api/warehouse/in/${editingId.value}`, payload)
+    } else {
+      if (form.syncExpense) {
+        payload.syncExpense = true
+        payload.bankAccountId = form.bankAccountId || null
+      }
+      resp = await api.post('/api/warehouse/in', payload)
+    }
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '保存失败')
-    ElMessage.success('保存成功')
+    ElMessage.success(editingId.value ? '修改成功' : '保存成功')
     dialogVisible.value = false
     await fetchList()
   } catch (e) {

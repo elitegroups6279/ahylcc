@@ -20,5 +20,6 @@ public class InventoryInVO {
     private Long operatorId;
     private String attachmentUrl;
     private String remark;
+    private String supplyCategory;
     private LocalDateTime createTime;
 }

@@ -15,11 +15,29 @@
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="materialName" label="物资" width="200" />
         <el-table-column prop="department" label="部门" width="140" />
-        <el-table-column prop="purpose" label="用途" min-width="200" />
+        <el-table-column prop="purpose" label="用途" min-width="160" />
         <el-table-column prop="quantity" label="数量" width="100" />
+        <el-table-column prop="specification" label="规格" width="120" />
+        <el-table-column prop="supplyCategory" label="供应类别" width="140">
+          <template #default="{ row }">{{ supplyCategoryLabel(row.supplyCategory) }}</template>
+        </el-table-column>
         <el-table-column prop="outDate" label="出库日期" width="140" />
         <el-table-column prop="status" label="状态" width="120" />
         <el-table-column prop="remark" label="备注" min-width="200" />
+        <el-table-column v-if="isAdmin" label="操作" width="140" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="openEdit(row)">
+              <el-icon><Edit /></el-icon> 编辑
+            </el-button>
+            <el-popconfirm title="确定删除该出库记录？" @confirm="doDelete(row.id)">
+              <template #reference>
+                <el-button type="danger" link size="small">
+                  <el-icon><Delete /></el-icon> 删除
+                </el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pager">
@@ -36,7 +54,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" title="新增出库" width="620px">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '修改出库' : '新增出库'" width="620px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="物资" prop="materialId">
           <el-select
@@ -55,6 +73,9 @@
         <el-form-item label="数量" prop="quantity">
           <el-input-number v-model="form.quantity" :min="1" :max="999999" />
         </el-form-item>
+        <el-form-item label="规格" prop="specification">
+          <el-input v-model="form.specification" placeholder="如：50kg/袋、500ml/瓶" />
+        </el-form-item>
         <el-form-item label="部门" prop="department">
           <el-input v-model="form.department" />
         </el-form-item>
@@ -63,6 +84,12 @@
         </el-form-item>
         <el-form-item label="出库日期" prop="outDate">
           <el-date-picker v-model="form.outDate" type="date" value-format="YYYY-MM-DD" />
+        </el-form-item>
+        <el-form-item label="供应类别" prop="supplyCategory">
+          <el-select v-model="form.supplyCategory" style="width: 100%">
+            <el-option label="社会化物资" value="SOCIAL" />
+            <el-option label="集中供养物资" value="CENTRALIZED" />
+          </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" :rows="3" />
@@ -77,9 +104,17 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Edit, Delete } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
+import { useAuthStore } from '../../store/auth'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => {
+  const roles = authStore.user?.roles || authStore.userInfo?.roles || []
+  return roles.includes('ADMIN') || roles.includes('SUPER_ADMIN')
+})
 
 const loading = ref(false)
 const saving = ref(false)
@@ -90,11 +125,14 @@ const pageSize = ref(10)
 
 const dialogVisible = ref(false)
 const formRef = ref()
+const editingId = ref(null)
 const form = reactive({
   materialId: null,
   department: '',
   purpose: '',
   quantity: 1,
+  specification: '',
+  supplyCategory: 'SOCIAL',
   outDate: '',
   remark: ''
 })
@@ -107,6 +145,12 @@ const rules = {
 
 const materialLoading = ref(false)
 const materialOptions = ref([])
+
+function supplyCategoryLabel(cat) {
+  if (cat === 'CENTRALIZED') return '集中供养物资'
+  if (cat === 'SOCIAL') return '社会化物资'
+  return cat || '社会化物资'
+}
 
 async function searchMaterials(query) {
   materialLoading.value = true
@@ -139,7 +183,7 @@ async function fetchList() {
   }
 }
 
-function openCreate() {
+function resetForm() {
   const today = new Date()
   const yyyy = today.getFullYear()
   const mm = String(today.getMonth() + 1).padStart(2, '0')
@@ -148,10 +192,43 @@ function openCreate() {
   form.department = ''
   form.purpose = ''
   form.quantity = 1
+  form.specification = ''
+  form.supplyCategory = 'SOCIAL'
   form.outDate = `${yyyy}-${mm}-${dd}`
   form.remark = ''
+}
+
+function openCreate() {
+  editingId.value = null
+  resetForm()
   dialogVisible.value = true
   searchMaterials('')
+}
+
+function openEdit(row) {
+  editingId.value = row.id
+  form.materialId = row.materialId
+  form.department = row.department || ''
+  form.purpose = row.purpose || ''
+  form.quantity = row.quantity || 1
+  form.specification = row.specification || ''
+  form.supplyCategory = row.supplyCategory || 'SOCIAL'
+  form.outDate = row.outDate || ''
+  form.remark = row.remark || ''
+  dialogVisible.value = true
+  searchMaterials('')
+}
+
+async function doDelete(id) {
+  try {
+    const resp = await api.delete(`/api/warehouse/out/${id}`)
+    const body = resp.data
+    if (body.code !== 200) throw new Error(body.msg || '删除失败')
+    ElMessage.success('删除成功')
+    await fetchList()
+  } catch (e) {
+    ElMessage.error(e.message || '删除失败')
+  }
 }
 
 async function submit() {
@@ -159,17 +236,25 @@ async function submit() {
   await formRef.value.validate()
   saving.value = true
   try {
-    const resp = await api.post('/api/warehouse/out', {
+    const payload = {
       materialId: form.materialId,
       department: form.department || null,
       purpose: form.purpose || null,
       quantity: form.quantity,
+      specification: form.specification || null,
+      supplyCategory: form.supplyCategory,
       outDate: form.outDate,
       remark: form.remark || null
-    })
+    }
+    let resp
+    if (editingId.value) {
+      resp = await api.put(`/api/warehouse/out/${editingId.value}`, payload)
+    } else {
+      resp = await api.post('/api/warehouse/out', payload)
+    }
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '保存失败')
-    ElMessage.success('保存成功')
+    ElMessage.success(editingId.value ? '修改成功' : '保存成功')
     dialogVisible.value = false
     await fetchList()
   } catch (e) {

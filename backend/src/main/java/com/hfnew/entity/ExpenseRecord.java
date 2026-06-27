@@ -18,6 +18,7 @@ public class ExpenseRecord {
     private String description;
     private Long operatorId;
     private String remark;
+    private Long bankAccountId;
     @TableLogic
     private Integer deleted;
     @TableField(fill = FieldFill.INSERT)

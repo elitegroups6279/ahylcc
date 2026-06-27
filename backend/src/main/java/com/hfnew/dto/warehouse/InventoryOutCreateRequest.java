@@ -10,6 +10,8 @@ public class InventoryOutCreateRequest {
     private String department;
     private String purpose;
     private Integer quantity;
+    private String specification;
+    private String supplyCategory;
     private LocalDate outDate;
     private String remark;
 }

@@ -1,6 +1,7 @@
 package com.hfnew.service;
 
 import com.hfnew.dto.notify.FeeWarningItem;
+import com.hfnew.dto.notify.LeaveNoticeItem;
 import com.hfnew.dto.notify.ReimbursementNoticeItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -197,6 +198,86 @@ public class NotificationService {
             }
             return list;
         }, Math.max(limit, 1));
+    }
+
+    /**
+     * 统计请假中老人数量
+     */
+    public int countOnLeaveElderly() {
+        String sql = """
+                SELECT COUNT(DISTINCT elderly_id)
+                FROM t_elderly_leave
+                WHERE deleted = 0 AND status = 'ON_LEAVE'
+                """;
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * 获取请假提醒列表（包含请假中和近期已返院的）
+     */
+    public List<LeaveNoticeItem> listLeaveNotices(int limit) {
+        String sql = """
+                SELECT 
+                    el.id,
+                    el.elderly_id,
+                    e.name AS elderly_name,
+                    el.start_date,
+                    el.end_date,
+                    el.return_date,
+                    el.status,
+                    el.reason
+                FROM t_elderly_leave el
+                JOIN t_elderly e ON e.id = el.elderly_id AND e.deleted = 0
+                WHERE el.deleted = 0 
+                  AND (el.status = 'ON_LEAVE' 
+                       OR (el.status = 'RETURNED' AND el.return_date >= ?))
+                ORDER BY 
+                    CASE WHEN el.status = 'ON_LEAVE' THEN 0 ELSE 1 END,
+                    el.start_date DESC
+                LIMIT ?
+                """;
+        
+        // 显示最近7天内返院的记录
+        LocalDate recentDate = LocalDate.now().minusDays(7);
+        
+        return jdbcTemplate.query(sql, (ResultSet rs) -> {
+            List<LeaveNoticeItem> list = new ArrayList<>();
+            while (rs.next()) {
+                LeaveNoticeItem item = new LeaveNoticeItem();
+                item.setId(rs.getLong("id"));
+                item.setElderlyId(rs.getLong("elderly_id"));
+                item.setElderlyName(rs.getString("elderly_name"));
+                
+                Date startDate = rs.getDate("start_date");
+                if (startDate != null) {
+                    item.setStartDate(startDate.toLocalDate());
+                }
+                
+                Date endDate = rs.getDate("end_date");
+                if (endDate != null) {
+                    item.setEndDate(endDate.toLocalDate());
+                }
+                
+                Date returnDate = rs.getDate("return_date");
+                if (returnDate != null) {
+                    item.setReturnDate(returnDate.toLocalDate());
+                }
+                
+                item.setStatus(rs.getString("status"));
+                item.setReason(rs.getString("reason"));
+                
+                // 计算请假天数
+                if (item.getStartDate() != null) {
+                    LocalDate endCalc = item.getReturnDate() != null ? item.getReturnDate() : LocalDate.now();
+                    long days = ChronoUnit.DAYS.between(item.getStartDate(), endCalc) + 1;
+                    item.setLeaveDays((int) days);
+                }
+                
+                list.add(item);
+            }
+            return list;
+        }, Date.valueOf(recentDate), Math.max(limit, 1));
     }
 
     private static LocalDateTime toLocalDateTime(Object value) {

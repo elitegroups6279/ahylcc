@@ -20,6 +20,9 @@ public class PaymentVO {
     private String remark;
     private String incomeType;
     private String description;
+    private Long bankAccountId;
+    private String bankAccountName;
+    private String bankAccountType;
     private LocalDate paymentDate;
     private LocalDate validityStartDate;
     private LocalDate validityEndDate;

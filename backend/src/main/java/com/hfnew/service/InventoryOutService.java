@@ -83,6 +83,8 @@ public class InventoryOutService {
         out.setOperatorId(operatorId);
         out.setOutDate(request.getOutDate() == null ? LocalDate.now() : request.getOutDate());
         out.setStatus("APPROVED");
+        out.setSpecification(request.getSpecification());
+        out.setSupplyCategory(request.getSupplyCategory() != null ? request.getSupplyCategory() : "SOCIAL");
         out.setRemark(request.getRemark());
         inventoryOutMapper.insert(out);
 
@@ -111,8 +113,33 @@ public class InventoryOutService {
         vo.setOperatorId(out.getOperatorId());
         vo.setOutDate(out.getOutDate());
         vo.setStatus(out.getStatus());
+        vo.setSpecification(out.getSpecification());
+        vo.setSupplyCategory(out.getSupplyCategory());
         vo.setRemark(out.getRemark());
         vo.setCreateTime(out.getCreateTime());
         return vo;
+    }
+
+    @Transactional
+    public void update(Long id, InventoryOutCreateRequest request) {
+        InventoryOut out = inventoryOutMapper.selectById(id);
+        if (out == null) throw new BizException(404, 404, "出库记录不存在");
+
+        if (request.getMaterialId() != null) out.setMaterialId(request.getMaterialId());
+        if (request.getDepartment() != null) out.setDepartment(request.getDepartment());
+        if (request.getPurpose() != null) out.setPurpose(request.getPurpose());
+        if (request.getQuantity() != null) out.setQuantity(request.getQuantity());
+        if (request.getSpecification() != null) out.setSpecification(request.getSpecification());
+        if (request.getSupplyCategory() != null) out.setSupplyCategory(request.getSupplyCategory());
+        if (request.getOutDate() != null) out.setOutDate(request.getOutDate());
+        if (request.getRemark() != null) out.setRemark(request.getRemark());
+        inventoryOutMapper.updateById(out);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        InventoryOut out = inventoryOutMapper.selectById(id);
+        if (out == null) throw new BizException(404, 404, "出库记录不存在");
+        inventoryOutMapper.deleteById(id);
     }
 }

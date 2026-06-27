@@ -33,6 +33,7 @@ public class ExpenseRecordService {
     private final ExpenseRecordMapper expenseRecordMapper;
     private final UserMapper userMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final BankAccountService bankAccountService;
 
     public PageResult<ExpenseVO> list(int page, int pageSize, String expenseType, String startDate, String endDate) {
         Page<ExpenseRecord> pageReq = new Page<>(page, pageSize);
@@ -77,7 +78,18 @@ public class ExpenseRecordService {
         record.setDescription(request.getDescription());
         record.setOperatorId(operatorId);
         record.setRemark(request.getRemark());
+
+        // 设置银行账户：优先使用请求中指定的账户，否则默认BASIC
+        Long bankAccountId = request.getBankAccountId() != null
+                ? request.getBankAccountId()
+                : bankAccountService.getDefaultBankAccountId();
+        record.setBankAccountId(bankAccountId);
+
         expenseRecordMapper.insert(record);
+
+        // 记录银行账户交易流水
+        bankAccountService.recordExpenseTransaction(record.getId(), request.getAmount(),
+                request.getExpenseType(), request.getDescription(), bankAccountId);
 
         return record.getId();
     }

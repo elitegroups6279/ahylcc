@@ -37,6 +37,22 @@ public class WarehouseInventoryOutController {
         return ResponseEntity.ok(ApiResponse.success(inventoryOutService.create(getCurrentUserId(), request)));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @OpLog(module = "仓库管理", operation = "修改出库记录")
+    public ResponseEntity<ApiResponse<Void>> update(@PathVariable Long id, @RequestBody InventoryOutCreateRequest request) {
+        inventoryOutService.update(id, request);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @OpLog(module = "仓库管理", operation = "删除出库记录")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        inventoryOutService.delete(id);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Object principal = auth == null ? null : auth.getPrincipal();

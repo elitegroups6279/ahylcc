@@ -9,4 +9,5 @@ public class NotificationSummaryResponse {
     private Integer stockWarningCount;
     private Integer drugExpiryWarningCount;
     private Integer contractExpiringCount;
+    private Integer onLeaveCount; // 请假中老人数量
 }

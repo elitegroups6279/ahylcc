@@ -13,6 +13,8 @@ public class InventoryOutVO {
     private String department;
     private String purpose;
     private Integer quantity;
+    private String specification;
+    private String supplyCategory;
     private Long operatorId;
     private LocalDate outDate;
     private String status;

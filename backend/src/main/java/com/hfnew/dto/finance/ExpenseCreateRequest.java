@@ -12,4 +12,5 @@ public class ExpenseCreateRequest {
     private String payee;
     private String description;
     private String remark;
+    private Long bankAccountId;
 }

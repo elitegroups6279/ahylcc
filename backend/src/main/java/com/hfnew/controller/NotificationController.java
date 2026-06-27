@@ -1,6 +1,7 @@
 package com.hfnew.controller;
 
 import com.hfnew.common.ApiResponse;
+import com.hfnew.dto.notify.LeaveNoticeItem;
 import com.hfnew.dto.notify.NotificationSummaryResponse;
 import com.hfnew.dto.notify.ReimbursementNoticeItem;
 import com.hfnew.service.NotificationService;
@@ -28,6 +29,7 @@ public class NotificationController {
         resp.setStockWarningCount(notificationService.countStockWarnings());
         resp.setDrugExpiryWarningCount(notificationService.countDrugExpiryWarnings());
         resp.setContractExpiringCount(notificationService.countContractExpiring());
+        resp.setOnLeaveCount(notificationService.countOnLeaveElderly()); // 添加请假中老人数量
         return ResponseEntity.ok(ApiResponse.success(resp));
     }
 
@@ -35,5 +37,11 @@ public class NotificationController {
     public ResponseEntity<ApiResponse<List<ReimbursementNoticeItem>>> reimbursements(
             @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(ApiResponse.success(notificationService.listPendingReimbursements(limit)));
+    }
+
+    @GetMapping("/leaves")
+    public ResponseEntity<ApiResponse<List<LeaveNoticeItem>>> leaves(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(notificationService.listLeaveNotices(limit)));
     }
 }

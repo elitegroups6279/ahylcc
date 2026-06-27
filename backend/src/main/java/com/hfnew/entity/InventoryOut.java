@@ -32,6 +32,10 @@ public class InventoryOut {
 
     private String status;
 
+    private String specification;
+
+    private String supplyCategory;
+
     private String remark;
 
     @TableLogic

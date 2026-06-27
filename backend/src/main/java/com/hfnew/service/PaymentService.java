@@ -7,9 +7,11 @@ import com.hfnew.common.PageResult;
 import com.hfnew.dto.finance.ElderlyOption;
 import com.hfnew.dto.finance.PaymentCreateRequest;
 import com.hfnew.dto.finance.PaymentVO;
+import com.hfnew.entity.BankAccount;
 import com.hfnew.entity.FeeAccount;
 import com.hfnew.entity.PaymentRecord;
 import com.hfnew.exception.BizException;
+import com.hfnew.mapper.BankAccountMapper;
 import com.hfnew.mapper.FeeAccountMapper;
 import com.hfnew.mapper.PaymentRecordMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,8 +34,10 @@ public class PaymentService {
 
     private final PaymentRecordMapper paymentRecordMapper;
     private final FeeAccountMapper feeAccountMapper;
+    private final BankAccountMapper bankAccountMapper;
     private final JdbcTemplate jdbcTemplate;
     private final SystemConfigService systemConfigService;
+    private final BankAccountService bankAccountService;
 
     public List<ElderlyOption> listElderlyOptions(String keyword) {
         String baseSql = "SELECT id, name, id_card, unique_no FROM t_elderly WHERE deleted = 0 AND (status = 'ACTIVE' OR status = 'ON_LEAVE')";
@@ -70,7 +74,8 @@ public class PaymentService {
         IPage<PaymentRecord> result = paymentRecordMapper.selectPage(pageReq, wrapper);
         List<PaymentRecord> records = result.getRecords();
         Map<Long, String> nameMap = loadElderlyNames(records.stream().map(PaymentRecord::getElderlyId).collect(Collectors.toList()));
-        List<PaymentVO> list = records.stream().map(r -> toVO(r, nameMap.get(r.getElderlyId()))).collect(Collectors.toList());
+        Map<Long, BankAccount> bankAccountMap = loadBankAccounts(records.stream().map(PaymentRecord::getBankAccountId).collect(Collectors.toList()));
+        List<PaymentVO> list = records.stream().map(r -> toVO(r, nameMap.get(r.getElderlyId()), bankAccountMap.get(r.getBankAccountId()))).collect(Collectors.toList());
         return new PageResult<>(result.getCurrent(), result.getSize(), result.getTotal(), list);
     }
 
@@ -105,7 +110,16 @@ public class PaymentService {
             record.setValidityStartDate(request.getValidityStartDate());
             record.setValidityEndDate(request.getValidityEndDate());
         }
+
+        // 根据收入类型路由到对应银行账户
+        Long bankAccountId = bankAccountService.resolveBankAccountId(request.getIncomeType());
+        record.setBankAccountId(bankAccountId);
+
         paymentRecordMapper.insert(record);
+
+        // 记录银行账户交易流水
+        bankAccountService.recordIncomeTransaction(record.getId(), request.getAmount(),
+                request.getIncomeType(), request.getDescription());
 
         // 仅当 elderlyId 有值时才更新老人费用账户
         if (request.getElderlyId() != null) {
@@ -226,7 +240,7 @@ public class PaymentService {
         return map;
     }
 
-    private PaymentVO toVO(PaymentRecord r, String elderlyName) {
+    private PaymentVO toVO(PaymentRecord r, String elderlyName, BankAccount bankAccount) {
         PaymentVO vo = new PaymentVO();
         vo.setId(r.getId());
         vo.setElderlyId(r.getElderlyId());
@@ -240,11 +254,30 @@ public class PaymentService {
         vo.setRemark(r.getRemark());
         vo.setIncomeType(r.getIncomeType());
         vo.setDescription(r.getDescription());
+        vo.setBankAccountId(r.getBankAccountId());
+        if (bankAccount != null) {
+            vo.setBankAccountName(bankAccount.getAccountName());
+            vo.setBankAccountType(bankAccount.getAccountType());
+        }
         vo.setPaymentDate(r.getPaymentDate());
         vo.setValidityStartDate(r.getValidityStartDate());
         vo.setValidityEndDate(r.getValidityEndDate());
         vo.setCreateTime(r.getCreateTime());
         return vo;
+    }
+
+    private Map<Long, BankAccount> loadBankAccounts(List<Long> bankAccountIds) {
+        Map<Long, BankAccount> map = new HashMap<>();
+        if (bankAccountIds == null || bankAccountIds.isEmpty()) return map;
+        List<Long> ids = bankAccountIds.stream().distinct().filter(id -> id != null).collect(Collectors.toList());
+        if (ids.isEmpty()) return map;
+        for (Long id : ids) {
+            BankAccount account = bankAccountMapper.selectById(id);
+            if (account != null) {
+                map.put(id, account);
+            }
+        }
+        return map;
     }
 
     private static int parseInt(String value, int defaultValue) {

@@ -39,6 +39,10 @@ public class InventoryIn {
 
     private String remark;
 
+    private String supplyCategory;
+
+    private Long expenseRecordId;
+
     @TableLogic
     private Integer deleted;
 

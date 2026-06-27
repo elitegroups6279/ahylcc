@@ -14,6 +14,12 @@ public class InventoryInCreateRequest {
     private BigDecimal unitPrice;
     private BigDecimal totalAmount;
     private LocalDate inDate;
-    private String attachmentUrl;
     private String remark;
+    private String supplyCategory;
+
+    /** 是否同步生成支出记录 */
+    private Boolean syncExpense;
+
+    /** 出账银行账户 (syncExpense=true时使用) */
+    private Long bankAccountId;
 }

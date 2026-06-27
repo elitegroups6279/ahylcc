@@ -78,7 +78,13 @@
             {{ sourceTypeMap[row.sourceType] || row.sourceType }}
           </template>
         </el-table-column>
-        <el-table-column prop="receiptNo" label="收据号" width="140" />
+        <el-table-column label="入账账户" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="row.bankAccountType === 'BASIC'" type="primary">基本户</el-tag>
+            <el-tag v-else-if="row.bankAccountType === 'GENERAL'" type="success">一般户</el-tag>
+            <el-tag v-else type="info">未关联</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="paymentDate" label="缴费时间" width="120" />
         <el-table-column label="费用有效期" width="180">
           <template #default="{ row }">
@@ -240,8 +246,10 @@
             <el-option label="其他" value="OTHER" />
           </el-select>
         </el-form-item>
-        <el-form-item label="收据号" prop="receiptNo">
-          <el-input v-model="incomeForm.receiptNo" placeholder="可选" />
+        <el-form-item label="入账账户" prop="bankAccountId">
+          <el-select v-model="incomeForm.bankAccountId" placeholder="选择入账账户" style="width: 220px">
+            <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="incomeForm.remark" type="textarea" :rows="3" placeholder="可选" />
@@ -270,6 +278,11 @@
         <el-form-item label="支出日期" prop="expenseDate">
           <el-date-picker v-model="expenseForm.expenseDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 220px" />
         </el-form-item>
+        <el-form-item label="出账账户" prop="bankAccountId">
+          <el-select v-model="expenseForm.bankAccountId" placeholder="选择出账账户" style="width: 220px">
+            <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="说明" prop="description">
           <el-input v-model="expenseForm.description" type="textarea" :rows="2" placeholder="可选" />
         </el-form-item>
@@ -286,7 +299,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api as client } from '../../api/client'
 import { useAuthStore } from '../../store/auth'
@@ -318,6 +331,21 @@ const summary = reactive({
 const selectedElderly = computed(() => {
   return elderlyOptions.value.find(e => e.id === incomeForm.elderlyId) || null
 })
+
+// 银行账户
+const bankAccounts = ref([])
+
+async function loadBankAccounts() {
+  try {
+    const resp = await client.get('/api/finance/bank-accounts')
+    const body = resp.data
+    if (body.code === 200) {
+      bankAccounts.value = body.data || []
+    }
+  } catch (e) {
+    console.warn('加载银行账户失败', e)
+  }
+}
 
 // 老人选项
 const elderlyOptions = ref([])
@@ -352,12 +380,12 @@ const incomeForm = reactive({
   amount: 0,
   paymentMethod: 'CASH',
   sourceType: 'OTHER',
-  receiptNo: '',
   remark: '',
   incomeType: 'ELDERLY_FEE',
   description: '',
   paymentDate: new Date().toISOString().slice(0, 10),
-  validityRange: null
+  validityRange: null,
+  bankAccountId: null
 })
 const incomeRules = {
   incomeType: [{ required: true, message: '请选择收入类型', trigger: 'change' }],
@@ -377,7 +405,8 @@ const expenseForm = reactive({
   payee: '',
   expenseDate: '',
   description: '',
-  remark: ''
+  remark: '',
+  bankAccountId: null
 })
 const expenseRules = {
   expenseType: [{ required: true, message: '请选择支出类型', trigger: 'change' }],
@@ -491,13 +520,21 @@ function switchView(view) {
   }
 }
 
-// 收入类型切换时清空相关字段
+// 收入类型切换时清空相关字段 + 自动路由银行账户
 function onIncomeTypeChange(val) {
   if (val !== 'ELDERLY_FEE') {
     incomeForm.elderlyId = null
     incomeForm.validityRange = null
   } else {
     incomeForm.description = ''
+  }
+  // 自动路由：SUBSIDY → 一般户，其他 → 基本户
+  if (val === 'SUBSIDY') {
+    const general = bankAccounts.value.find(a => a.accountType === 'GENERAL')
+    if (general) incomeForm.bankAccountId = general.id
+  } else {
+    const basic = bankAccounts.value.find(a => a.accountType === 'BASIC')
+    if (basic) incomeForm.bankAccountId = basic.id
   }
   // 动态调整 elderlyId 的校验规则
   if (val === 'ELDERLY_FEE') {
@@ -522,13 +559,13 @@ async function submitIncome() {
       amount: incomeForm.amount,
       paymentMethod: incomeForm.paymentMethod,
       sourceType: incomeForm.sourceType,
-      receiptNo: incomeForm.receiptNo || null,
       remark: incomeForm.remark || null,
       incomeType: incomeForm.incomeType,
       description: incomeForm.incomeType !== 'ELDERLY_FEE' ? (incomeForm.description || null) : null,
       paymentDate: incomeForm.paymentDate,
       validityStartDate: incomeForm.validityRange && incomeForm.validityRange.length === 2 ? incomeForm.validityRange[0] : null,
-      validityEndDate: incomeForm.validityRange && incomeForm.validityRange.length === 2 ? incomeForm.validityRange[1] : null
+      validityEndDate: incomeForm.validityRange && incomeForm.validityRange.length === 2 ? incomeForm.validityRange[1] : null,
+      bankAccountId: incomeForm.bankAccountId || null
     })
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '保存失败')
@@ -539,12 +576,12 @@ async function submitIncome() {
     incomeForm.amount = 0
     incomeForm.paymentMethod = 'CASH'
     incomeForm.sourceType = 'OTHER'
-    incomeForm.receiptNo = ''
     incomeForm.remark = ''
     incomeForm.incomeType = 'ELDERLY_FEE'
     incomeForm.description = ''
     incomeForm.paymentDate = new Date().toISOString().slice(0, 10)
     incomeForm.validityRange = null
+    incomeForm.bankAccountId = null
     // 恢复校验规则
     incomeRules.elderlyId = [{ required: true, message: '请选择老人', trigger: 'change' }]
     await loadIncome()
@@ -568,7 +605,8 @@ async function submitExpense() {
       payee: expenseForm.payee,
       expenseDate: expenseForm.expenseDate,
       description: expenseForm.description || null,
-      remark: expenseForm.remark || null
+      remark: expenseForm.remark || null,
+      bankAccountId: expenseForm.bankAccountId || null
     })
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '保存失败')
@@ -581,6 +619,7 @@ async function submitExpense() {
     expenseForm.expenseDate = ''
     expenseForm.description = ''
     expenseForm.remark = ''
+    expenseForm.bankAccountId = null
     await loadExpense()
     await loadSummary()
   } catch (e) {
@@ -620,6 +659,7 @@ async function deleteExpense(id) {
 
 onMounted(() => {
   loadElderlyOptions()
+  loadBankAccounts()
   loadSummary()
   loadIncome()
 })

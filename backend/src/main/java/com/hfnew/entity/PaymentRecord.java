@@ -35,6 +35,8 @@ public class PaymentRecord {
 
     private String remark;
 
+    private Long bankAccountId;
+
         @TableField(fill = FieldFill.INSERT)
         private Long orgId;
 

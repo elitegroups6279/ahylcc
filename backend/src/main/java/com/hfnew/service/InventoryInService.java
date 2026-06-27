@@ -6,9 +6,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hfnew.common.PageResult;
 import com.hfnew.dto.warehouse.InventoryInCreateRequest;
 import com.hfnew.dto.warehouse.InventoryInVO;
+import com.hfnew.entity.ExpenseRecord;
 import com.hfnew.entity.InventoryIn;
+import com.hfnew.entity.Material;
 import com.hfnew.entity.Stock;
 import com.hfnew.exception.BizException;
+import com.hfnew.mapper.ExpenseRecordMapper;
 import com.hfnew.mapper.InventoryInMapper;
 import com.hfnew.mapper.MaterialMapper;
 import com.hfnew.mapper.StockMapper;
@@ -33,6 +36,8 @@ public class InventoryInService {
     private final InventoryInMapper inventoryInMapper;
     private final StockMapper stockMapper;
     private final MaterialMapper materialMapper;
+    private final ExpenseRecordMapper expenseRecordMapper;
+    private final BankAccountService bankAccountService;
     private final JdbcTemplate jdbcTemplate;
 
     public PageResult<InventoryInVO> list(int page, int pageSize) {
@@ -67,8 +72,8 @@ public class InventoryInService {
         in.setTotalAmount(totalAmount);
         in.setInDate(request.getInDate() == null ? LocalDate.now() : request.getInDate());
         in.setOperatorId(operatorId);
-        in.setAttachmentUrl(request.getAttachmentUrl());
         in.setRemark(request.getRemark());
+        in.setSupplyCategory(request.getSupplyCategory() != null ? request.getSupplyCategory() : "SOCIAL");
         inventoryInMapper.insert(in);
 
         Stock stock = stockMapper.selectByMaterialIdForUpdate(request.getMaterialId());
@@ -84,6 +89,31 @@ public class InventoryInService {
             stock.setQuantity(oldQty + request.getQuantity());
             stock.setTotalValue(oldValue.add(totalAmount));
             stockMapper.updateById(stock);
+        }
+
+        // Sync expense record if requested
+        if (Boolean.TRUE.equals(request.getSyncExpense())) {
+            Material material = materialMapper.selectById(request.getMaterialId());
+            String materialName = material != null ? material.getName() : "未知物资";
+
+            ExpenseRecord expense = new ExpenseRecord();
+            expense.setExpenseType("SUPPLIES");
+            expense.setAmount(totalAmount);
+            expense.setExpenseDate(in.getInDate());
+            expense.setPayee(in.getSupplier());
+            expense.setDescription("采购入库-" + materialName + " x" + in.getQuantity());
+            expense.setBankAccountId(request.getBankAccountId());
+            expense.setOperatorId(operatorId);
+            expenseRecordMapper.insert(expense);
+
+            // Link back to inventory-in
+            in.setExpenseRecordId(expense.getId());
+            inventoryInMapper.updateById(in);
+
+            // Record bank transaction
+            bankAccountService.recordExpenseTransaction(
+                    expense.getId(), expense.getAmount(), "SUPPLIES",
+                    expense.getDescription(), request.getBankAccountId());
         }
 
         return in.getId();
@@ -114,7 +144,32 @@ public class InventoryInService {
         vo.setOperatorId(in.getOperatorId());
         vo.setAttachmentUrl(in.getAttachmentUrl());
         vo.setRemark(in.getRemark());
+        vo.setSupplyCategory(in.getSupplyCategory());
         vo.setCreateTime(in.getCreateTime());
         return vo;
+    }
+
+    @Transactional
+    public void update(Long id, InventoryInCreateRequest request) {
+        InventoryIn in = inventoryInMapper.selectById(id);
+        if (in == null) throw new BizException(404, 404, "入库记录不存在");
+
+        if (request.getMaterialId() != null) in.setMaterialId(request.getMaterialId());
+        if (request.getSupplier() != null) in.setSupplier(request.getSupplier());
+        if (request.getPurchaseOrderNo() != null) in.setPurchaseOrderNo(request.getPurchaseOrderNo());
+        if (request.getQuantity() != null) in.setQuantity(request.getQuantity());
+        if (request.getUnitPrice() != null) in.setUnitPrice(request.getUnitPrice());
+        if (request.getTotalAmount() != null) in.setTotalAmount(request.getTotalAmount());
+        if (request.getInDate() != null) in.setInDate(request.getInDate());
+        if (request.getRemark() != null) in.setRemark(request.getRemark());
+        if (request.getSupplyCategory() != null) in.setSupplyCategory(request.getSupplyCategory());
+        inventoryInMapper.updateById(in);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        InventoryIn in = inventoryInMapper.selectById(id);
+        if (in == null) throw new BizException(404, 404, "入库记录不存在");
+        inventoryInMapper.deleteById(id);
     }
 }

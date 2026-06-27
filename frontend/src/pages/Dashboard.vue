@@ -16,6 +16,24 @@
       </el-col>
     </el-row>
 
+    <!-- 双账户余额快览 -->
+    <el-row :gutter="16" class="bank-balance-row" v-if="bankDashboard.basicAccountId || bankDashboard.generalAccountId">
+      <el-col :span="12">
+        <div class="bank-balance-card basic-balance" @click="$router.push('/finance/bank-account')">
+          <div class="balance-label">基本户余额</div>
+          <div class="balance-amount">¥{{ formatBankMoney(bankDashboard.basicBalance) }}</div>
+          <div class="balance-bank">{{ bankDashboard.basicAccountName || '' }}</div>
+        </div>
+      </el-col>
+      <el-col :span="12">
+        <div class="bank-balance-card general-balance" @click="$router.push('/finance/bank-account')">
+          <div class="balance-label">一般户余额</div>
+          <div class="balance-amount">¥{{ formatBankMoney(bankDashboard.generalBalance) }}</div>
+          <div class="balance-bank">{{ bankDashboard.generalAccountName || '' }}</div>
+        </div>
+      </el-col>
+    </el-row>
+
     <!-- 日历面板（左栏）+ 待办提醒（右栏）-->
     <el-row :gutter="16" class="main-row">
       <el-col :span="14">
@@ -133,6 +151,28 @@
               </div>
               <el-icon class="pending-arrow"><ArrowRight /></el-icon>
             </div>
+            <div class="pending-item-wrap">
+              <div class="pending-item info" @click="leaveExpanded = !leaveExpanded">
+                <div class="pending-icon"><el-icon :size="24"><Van /></el-icon></div>
+                <div class="pending-info">
+                  <div class="pending-count">{{ pendingSummary.onLeaveCount ?? 0 }}</div>
+                  <div class="pending-label">请假提醒</div>
+                </div>
+                <el-icon class="pending-arrow" :class="{ expanded: leaveExpanded }"><ArrowRight /></el-icon>
+              </div>
+              <div v-if="leaveExpanded && leaveNotices.length > 0" class="warning-detail-list">
+                <div
+                  v-for="leave in leaveNotices"
+                  :key="leave.id"
+                  class="warning-detail-item"
+                  @click="$router.push('/elderly/list')"
+                >
+                  <span class="warning-name">{{ leave.elderlyName }}</span>
+                  <span class="warning-days" v-if="leave.status === 'ON_LEAVE'">请假 {{ leave.leaveDays }} 天</span>
+                  <span class="warning-days" v-else style="color: #52c41a">已返院 ({{ formatDate(leave.returnDate) }})</span>
+                </div>
+              </div>
+            </div>
           </div>
           <el-empty v-else description="暂无待办" :image-size="60" />
         </el-card>
@@ -178,12 +218,14 @@ import { ElMessageBox } from 'element-plus'
 import {
   User, UserFilled, Money, Wallet, Bell,
   ArrowLeft, ArrowRight, Warning, Document, Tickets,
-  FirstAidKit, Plus, DataBoard
+  FirstAidKit, Plus, DataBoard, Van
 } from '@element-plus/icons-vue'
 
 const authStore = useAuthStore()
 const feeWarnings = ref([])
 const pendingSummary = ref(null)
+const leaveNotices = ref([])
+const leaveExpanded = ref(false)
 let timer = null
 
 // 日历相关数据
@@ -203,6 +245,27 @@ const stats = ref({
 // 总床位数（从localStorage读取，默认390）
 const totalBedCount = ref(parseInt(localStorage.getItem('totalBedCount')) || 390)
 const feeWarningExpanded = ref(false)
+
+// 银行账户余额
+const bankDashboard = ref({ basicAccountId: null, basicAccountName: null, basicBalance: 0, generalAccountId: null, generalAccountName: null, generalBalance: 0 })
+
+function formatBankMoney(val) {
+  if (val === null || val === undefined) return '0.00'
+  const n = Number(val)
+  if (Number.isNaN(n)) return '0.00'
+  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+async function loadBankDashboard() {
+  try {
+    const res = await api.get('/api/finance/bank-accounts/dashboard')
+    if (res.data?.code === 200) {
+      bankDashboard.value = res.data.data || {}
+    }
+  } catch (e) {
+    console.warn('加载银行账户余额失败', e)
+  }
+}
 
 // 床位使用率前端计算
 const bedUsageRateDisplay = computed(() => {
@@ -402,6 +465,24 @@ async function loadPendingSummary() {
   }
 }
 
+// 加载请假提醒列表
+async function loadLeaveNotices() {
+  try {
+    const res = await api.get('/api/notifications/leaves', { params: { limit: 10 } })
+    if (res.data?.code === 200) {
+      leaveNotices.value = res.data.data || []
+    }
+  } catch (e) {
+    console.warn('加载请假提醒失败', e)
+  }
+}
+
+// 格式化日期
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  return dateStr
+}
+
 // 加载统计数据
 async function loadStats() {
   try {
@@ -422,6 +503,8 @@ onMounted(async () => {
   await loadStats()
   await loadPendingSummary()
   await loadCalendarEvents()
+  await loadLeaveNotices()
+  await loadBankDashboard()
   timer = setInterval(fetchFeeWarnings, 30000)
 })
 
@@ -763,5 +846,47 @@ onUnmounted(() => {
   margin: 4px 0;
   font-size: 13px;
   color: #999;
+}
+
+/* 双账户余额快览 */
+.bank-balance-row {
+  margin-bottom: 16px;
+}
+
+.bank-balance-card {
+  border-radius: 10px;
+  padding: 16px 20px;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.bank-balance-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.basic-balance {
+  background: linear-gradient(135deg, #409EFF, #66b1ff);
+}
+
+.general-balance {
+  background: linear-gradient(135deg, #E6A23C, #f0c78a);
+}
+
+.balance-label {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.balance-amount {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 4px 0 2px;
+}
+
+.balance-bank {
+  font-size: 12px;
+  opacity: 0.7;
 }
 </style>

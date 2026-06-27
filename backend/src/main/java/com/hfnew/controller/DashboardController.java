@@ -149,6 +149,9 @@ public class DashboardController {
         long drugExpiryWarningCount = drugBatchMapper.selectCount(drugBatchWrapper);
         result.put("drugExpiryWarningCount", drugExpiryWarningCount);
 
+        // 请假中老人数
+        result.put("onLeaveCount", notificationService.countOnLeaveElderly());
+
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

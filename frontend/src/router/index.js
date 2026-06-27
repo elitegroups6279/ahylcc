@@ -113,6 +113,18 @@ const routes = [
         component: () => import('../pages/finance/FeeBill.vue'),
         meta: { title: '月度账单', permission: 'finance:bill', parent: '财务管理', requiresAuth: true }
       },
+      {
+        path: 'finance/bank-account',
+        name: 'BankAccount',
+        component: () => import('../pages/finance/BankAccount.vue'),
+        meta: { title: '账户管理', permission: 'finance:bank-account', parent: '财务管理', requiresAuth: true }
+      },
+      {
+        path: 'finance/wubao-allocate',
+        name: 'WubaoAllocate',
+        component: () => import('../pages/finance/WubaoAllocate.vue'),
+        meta: { title: '五保拨付', permission: 'finance:wubao-allocate', parent: '财务管理', requiresAuth: true }
+      },
       // 报表导出
       {
         path: 'reports/export',
