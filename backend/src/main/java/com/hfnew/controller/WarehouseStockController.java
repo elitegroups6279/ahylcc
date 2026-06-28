@@ -24,8 +24,9 @@ public class WarehouseStockController {
     public ResponseEntity<ApiResponse<PageResult<StockVO>>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(defaultValue = "false") boolean warningOnly
+            @RequestParam(defaultValue = "false") boolean warningOnly,
+            @RequestParam(required = false) String supplyCategory
     ) {
-        return ResponseEntity.ok(ApiResponse.success(stockService.list(page, pageSize, warningOnly)));
+        return ResponseEntity.ok(ApiResponse.success(stockService.list(page, pageSize, warningOnly, supplyCategory)));
     }
 }

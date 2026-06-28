@@ -15,6 +15,9 @@ public class InventoryOutVO {
     private Integer quantity;
     private String specification;
     private String supplyCategory;
+    private Long recipientStaffId;
+    private String recipientName;
+    private String recipientSignUrl;
     private Long operatorId;
     private LocalDate outDate;
     private String status;

@@ -1,23 +1,20 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>预约管理</span>
-          <div class="header-actions">
-            <el-select v-model="status" placeholder="状态" clearable style="width: 160px" @change="reload">
-              <el-option label="待确认" value="PENDING" />
-              <el-option label="已确认" value="CONFIRMED" />
-              <el-option label="服务中" value="IN_PROGRESS" />
-              <el-option label="已完成" value="COMPLETED" />
-              <el-option label="已取消" value="CANCELLED" />
-            </el-select>
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openCreate">创建预约</el-button>
-          </div>
-        </div>
+    <PageHeader title="预约管理">
+      <template #actions>
+        <el-select v-model="status" placeholder="状态" clearable style="width: 160px" @change="reload">
+          <el-option label="待确认" value="PENDING" />
+          <el-option label="已确认" value="CONFIRMED" />
+          <el-option label="服务中" value="IN_PROGRESS" />
+          <el-option label="已完成" value="COMPLETED" />
+          <el-option label="已取消" value="CANCELLED" />
+        </el-select>
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openCreate">创建预约</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <div style="overflow-x: auto">
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="90" />
@@ -124,6 +121,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const router = useRouter()

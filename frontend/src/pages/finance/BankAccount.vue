@@ -1,5 +1,11 @@
 <template>
   <div class="bank-account-page">
+    <PageHeader title="银行账户">
+      <template #actions>
+        <el-button type="primary" @click="showTransactionDialog = true">手动记账</el-button>
+      </template>
+    </PageHeader>
+
     <!-- 顶部双账户概览卡片 -->
     <el-row :gutter="16" style="margin-bottom: 20px">
       <el-col :span="12">
@@ -74,7 +80,6 @@
               style="width: 280px; margin-right: 12px"
             />
             <el-button @click="loadTransactions">查询</el-button>
-            <el-button type="primary" @click="showTransactionDialog = true">手动记账</el-button>
           </div>
         </div>
       </template>
@@ -171,6 +176,7 @@
 import { ref, reactive, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api as client } from '../../api/client'
+import PageHeader from '../../components/common/PageHeader.vue'
 import * as echarts from 'echarts'
 
 // 业务类型映射

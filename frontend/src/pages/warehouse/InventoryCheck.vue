@@ -1,16 +1,13 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>盘点管理</span>
-          <div class="header-actions">
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openCreate">新增盘点</el-button>
-          </div>
-        </div>
+    <PageHeader title="盘点管理">
+      <template #actions>
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openCreate">新增盘点</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="materialName" label="物资" width="220" />
@@ -72,6 +69,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const loading = ref(false)

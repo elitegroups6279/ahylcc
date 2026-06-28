@@ -41,6 +41,12 @@ public class InventoryIn {
 
     private String supplyCategory;
 
+    private Long allocationId;
+
+    private Long purchaseReceiptId;
+
+    private String inMode;
+
     private Long expenseRecordId;
 
     @TableLogic

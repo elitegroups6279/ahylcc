@@ -51,21 +51,21 @@ const breadcrumbs = computed(() => {
 :deep(.el-breadcrumb__inner) {
   display: flex;
   align-items: center;
-  color: #97a8be;
+  color: var(--color-text-disabled);
 }
 
 :deep(.el-breadcrumb__inner a),
 :deep(.el-breadcrumb__inner.is-link) {
-  color: #97a8be;
+  color: var(--color-text-disabled);
   font-weight: normal;
 }
 
 :deep(.el-breadcrumb__inner a:hover),
 :deep(.el-breadcrumb__inner.is-link:hover) {
-  color: #409eff;
+  color: var(--color-primary);
 }
 
 :deep(.el-breadcrumb__item:last-child .el-breadcrumb__inner) {
-  color: #606266;
+  color: var(--color-text-secondary);
 }
 </style>

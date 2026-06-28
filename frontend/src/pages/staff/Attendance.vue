@@ -1,40 +1,37 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>打卡记录</span>
-          <div class="header-actions">
-            <el-select
-              v-model="staffId"
-              filterable
-              remote
-              clearable
-              :remote-method="searchStaff"
-              :loading="staffLoading"
-              placeholder="选择护工"
-              style="width: 220px"
-              @change="reload"
-            >
-              <el-option v-for="s in staffOptions" :key="s.id" :label="s.name" :value="s.id" />
-            </el-select>
-            <el-date-picker
-              v-model="dateRange"
-              type="daterange"
-              range-separator="~"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="width: 280px"
-              @change="reload"
-            />
-            <el-button @click="reset">重置</el-button>
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openUpsert">补录打卡</el-button>
-          </div>
-        </div>
+    <PageHeader title="打卡记录">
+      <template #actions>
+        <el-select
+          v-model="staffId"
+          filterable
+          remote
+          clearable
+          :remote-method="searchStaff"
+          :loading="staffLoading"
+          placeholder="选择护工"
+          style="width: 220px"
+          @change="reload"
+        >
+          <el-option v-for="s in staffOptions" :key="s.id" :label="s.name" :value="s.id" />
+        </el-select>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="~"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          style="width: 280px"
+          @change="reload"
+        />
+        <el-button @click="reset">重置</el-button>
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openUpsert">补录打卡</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="staffName" label="护工" width="160" />
         <el-table-column prop="attendanceDate" label="日期" width="140" />
@@ -106,6 +103,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const loading = ref(false)

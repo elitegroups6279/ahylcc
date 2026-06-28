@@ -1,20 +1,9 @@
 <template>
   <div class="dashboard-page">
+    <PageHeader title="运营看板" subtitle="今日概览" />
 
     <!-- 5个渐变色统计卡片 -->
-    <el-row :gutter="16" class="stats-row">
-      <el-col :span="4" v-for="item in statsCards" :key="item.title" style="min-width: 180px">
-        <div class="stat-card" :style="{ background: item.gradient }" :class="{ clickable: item.clickable }" @click="item.onClick?.()">
-          <div class="stat-icon">
-            <el-icon :size="32"><component :is="item.icon" /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ item.value }}</div>
-            <div class="stat-title">{{ item.title }}</div>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
+    <StatsCardGroup :items="statsCards" :cols="5" />
 
     <!-- 双账户余额快览 -->
     <el-row :gutter="16" class="bank-balance-row" v-if="bankDashboard.basicAccountId || bankDashboard.generalAccountId">
@@ -215,6 +204,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '../store/auth'
 import { api } from '../api/client'
 import { ElMessageBox } from 'element-plus'
+import StatsCardGroup from '../components/common/StatsCardGroup.vue'
+import PageHeader from '../components/common/PageHeader.vue'
 import {
   User, UserFilled, Money, Wallet, Bell,
   ArrowLeft, ArrowRight, Warning, Document, Tickets,
@@ -293,36 +284,34 @@ const handleBedCardClick = () => {
 // 5个渐变色统计卡片配置
 const statsCards = computed(() => [
   {
-    title: '在住老人',
+    label: '在住老人',
     value: stats.value.elderlyCount,
     icon: User,
     gradient: 'linear-gradient(135deg, #1890ff, #36cfc9)'
   },
   {
-    title: '在职护工',
+    label: '在职护工',
     value: stats.value.staffCount,
     icon: UserFilled,
     gradient: 'linear-gradient(135deg, #52c41a, #95de64)'
   },
   {
-    title: '本月收入',
+    label: '本月收入',
     value: '¥' + (stats.value.monthlyIncome || 0).toLocaleString(),
     icon: Money,
     gradient: 'linear-gradient(135deg, #fa8c16, #ffc53d)'
   },
   {
-    title: '本月支出',
+    label: '本月支出',
     value: '¥' + (stats.value.monthlyExpense || 0).toLocaleString(),
     icon: Wallet,
     gradient: 'linear-gradient(135deg, #722ed1, #b37feb)'
   },
   {
-    title: '床位使用率',
+    label: '床位使用率',
     value: bedUsageRateDisplay.value,
     icon: DataBoard,
-    gradient: 'linear-gradient(135deg, #13c2c2, #5cdbd3)',
-    clickable: true,
-    onClick: handleBedCardClick
+    gradient: 'linear-gradient(135deg, #13c2c2, #5cdbd3)'
   }
 ])
 

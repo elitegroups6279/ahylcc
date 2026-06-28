@@ -36,6 +36,12 @@ public class InventoryOut {
 
     private String supplyCategory;
 
+    private Long recipientStaffId;
+
+    private String recipientName;
+
+    private String recipientSignUrl;
+
     private String remark;
 
     @TableLogic

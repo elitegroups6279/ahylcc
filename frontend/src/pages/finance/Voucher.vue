@@ -1,36 +1,33 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>凭证管理</span>
-          <div class="header-actions">
-            <el-date-picker
-              v-model="filterMonth"
-              type="month"
-              clearable
-              placeholder="选择月份"
-              style="width: 160px"
-              @change="reload"
-            />
-            <el-select v-model="filterStatus" clearable placeholder="状态" style="width: 120px" @change="reload">
-              <el-option label="草稿" value="DRAFT" />
-              <el-option label="待审核" value="SUBMITTED" />
-              <el-option label="已审核" value="APPROVED" />
-              <el-option label="已驳回" value="REJECTED" />
-            </el-select>
-            <el-select v-model="filterWord" clearable placeholder="凭证字" style="width: 110px" @change="reload">
-              <el-option label="记" value="记" />
-              <el-option label="收" value="收" />
-              <el-option label="付" value="付" />
-              <el-option label="转" value="转" />
-            </el-select>
-            <el-button @click="fetchList">查询</el-button>
-            <el-button type="primary" @click="openCreate">新增凭证</el-button>
-          </div>
-        </div>
+    <PageHeader title="凭证管理">
+      <template #actions>
+        <el-date-picker
+          v-model="filterMonth"
+          type="month"
+          clearable
+          placeholder="选择月份"
+          style="width: 160px"
+          @change="reload"
+        />
+        <el-select v-model="filterStatus" clearable placeholder="状态" style="width: 120px" @change="reload">
+          <el-option label="草稿" value="DRAFT" />
+          <el-option label="待审核" value="SUBMITTED" />
+          <el-option label="已审核" value="APPROVED" />
+          <el-option label="已驳回" value="REJECTED" />
+        </el-select>
+        <el-select v-model="filterWord" clearable placeholder="凭证字" style="width: 110px" @change="reload">
+          <el-option label="记" value="记" />
+          <el-option label="收" value="收" />
+          <el-option label="付" value="付" />
+          <el-option label="转" value="转" />
+        </el-select>
+        <el-button @click="fetchList">查询</el-button>
+        <el-button type="primary" @click="openCreate">新增凭证</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column label="凭证字号" width="160">
           <template #default="{ row }">{{ row.voucherWord }}-{{ row.voucherNo }}</template>
@@ -252,6 +249,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 import { useAuthStore } from '../../store/auth'
 

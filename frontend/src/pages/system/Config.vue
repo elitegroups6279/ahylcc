@@ -1,12 +1,8 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>系统配置</span>
-        </div>
-      </template>
+    <PageHeader title="系统配置" />
 
+    <el-card>
       <el-tabs v-model="activeTab">
         <!-- 基础配置 Tab -->
         <el-tab-pane label="基础配置" name="config">
@@ -163,6 +159,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 // ============ 基础配置 ============

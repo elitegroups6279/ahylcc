@@ -21,5 +21,6 @@ public class InventoryInVO {
     private String attachmentUrl;
     private String remark;
     private String supplyCategory;
+    private Long allocationId;
     private LocalDateTime createTime;
 }

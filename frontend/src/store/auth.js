@@ -80,8 +80,17 @@ const fallbackMenus = [
       { id: 50, menuName: '物资档案', path: '/warehouse/materials', icon: 'CollectionTag', menuType: 'M', orderNum: 0 },
       { id: 51, menuName: '入库管理', path: '/warehouse/in', icon: 'Download', menuType: 'M', orderNum: 1 },
       { id: 52, menuName: '出库管理', path: '/warehouse/out', icon: 'Upload', menuType: 'M', orderNum: 2 },
-      { id: 53, menuName: '库存看板', path: '/warehouse/stock', icon: 'DataBoard', menuType: 'M', orderNum: 3 },
-      { id: 54, menuName: '盘点管理', path: '/warehouse/check', icon: 'Checked', menuType: 'M', orderNum: 4 }
+      { id: 56, menuName: '出库审批', path: '/warehouse/outbound-request', icon: 'Checked', menuType: 'M', orderNum: 3 },
+      { id: 53, menuName: '库存看板', path: '/warehouse/stock', icon: 'DataBoard', menuType: 'M', orderNum: 4 },
+      { id: 54, menuName: '盘点管理', path: '/warehouse/check', icon: 'Checked', menuType: 'M', orderNum: 5 },
+      { id: 55, menuName: '供应商管理', path: '/warehouse/supplier', icon: 'OfficeBuilding', menuType: 'M', orderNum: 6 },
+      { id: 58, menuName: '采购申请', path: '/warehouse/purchase-request', icon: 'Document', menuType: 'M', orderNum: 7 },
+      { id: 59, menuName: '到货验收', path: '/warehouse/purchase-receipt', icon: 'CircleCheck', menuType: 'M', orderNum: 8 },
+      { id: 60, menuName: '资金看板', path: '/warehouse/fund-dashboard', icon: 'Money', menuType: 'M', orderNum: 9 },
+      { id: 61, menuName: '预算管理', path: '/warehouse/budget', icon: 'Wallet', menuType: 'M', orderNum: 10 },
+      { id: 62, menuName: '批次追踪', path: '/warehouse/inventory-batch', icon: 'Box', menuType: 'M', orderNum: 11 },
+      { id: 63, menuName: '消耗趋势', path: '/warehouse/consumption-trend', icon: 'DataAnalysis', menuType: 'M', orderNum: 12 },
+      { id: 64, menuName: '预警中心', path: '/warehouse/alerts', icon: 'Bell', menuType: 'M', orderNum: 13 }
     ]
   },
   {
@@ -132,7 +141,8 @@ const fallbackMenus = [
     menuType: 'C',
     orderNum: 8,
     children: [
-      { id: 91, menuName: '报表导出', path: '/reports/export', icon: 'Download', menuType: 'M', orderNum: 1 }
+      { id: 91, menuName: '报表导出', path: '/reports/export', icon: 'Download', menuType: 'M', orderNum: 1 },
+      { id: 92, menuName: '资金使用明细', path: '/reports/fund-usage', icon: 'Document', menuType: 'M', orderNum: 2 }
     ]
   }
 ]

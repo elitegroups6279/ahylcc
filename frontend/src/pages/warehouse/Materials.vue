@@ -1,18 +1,15 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>物资档案</span>
-          <div class="header-actions">
-            <el-input v-model="keyword" placeholder="名称/规格关键字" clearable style="width: 220px" @keyup.enter="reload" />
-            <el-input v-model="category" placeholder="类别" clearable style="width: 180px" @keyup.enter="reload" />
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openCreate">新增物资</el-button>
-          </div>
-        </div>
+    <PageHeader title="物资档案">
+      <template #actions>
+        <el-input v-model="keyword" placeholder="名称/规格关键字" clearable style="width: 220px" @keyup.enter="reload" />
+        <el-input v-model="category" placeholder="类别" clearable style="width: 180px" @keyup.enter="reload" />
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openCreate">新增物资</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="name" label="名称" width="180" />
@@ -75,6 +72,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const loading = ref(false)

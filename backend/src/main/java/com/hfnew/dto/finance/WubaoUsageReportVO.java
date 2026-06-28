@@ -17,6 +17,7 @@ public class WubaoUsageReportVO {
     @Data
     public static class ExpenseBreakdown {
         private String expenseType;
+        private String supplyCategory;
         private BigDecimal amount;
         private Integer count;
     }

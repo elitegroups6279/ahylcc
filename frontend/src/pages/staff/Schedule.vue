@@ -1,5 +1,7 @@
 <template>
   <div class="page">
+    <PageHeader title="排班管理" />
+
     <!-- 顶部工具栏 -->
     <el-card class="toolbar-card">
       <div class="toolbar">
@@ -260,6 +262,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowRight, Plus, Refresh } from '@element-plus/icons-vue'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 // 岗位类型标签映射

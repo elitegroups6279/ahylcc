@@ -7,6 +7,7 @@ import java.time.LocalDate;
 @Data
 public class InventoryCheckCreateRequest {
     private Long materialId;
+    private String supplyCategory;
     private Integer actualQuantity;
     private LocalDate checkDate;
     private String remark;

@@ -202,8 +202,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  background-color: var(--color-bg-card);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .navbar-left {
@@ -214,12 +214,12 @@ onUnmounted(() => {
 .toggle-btn {
   font-size: 20px;
   cursor: pointer;
-  color: #5a5e66;
+  color: var(--color-text-secondary);
   transition: color 0.2s;
 }
 
 .toggle-btn:hover {
-  color: #409eff;
+  color: var(--color-primary);
 }
 
 .navbar-right {
@@ -230,15 +230,16 @@ onUnmounted(() => {
 
 .notification-badge {
   cursor: pointer;
+  --el-badge-bg-color: var(--color-primary);
 }
 
 .notification-icon {
-  color: #5a5e66;
+  color: var(--color-text-secondary);
   transition: color 0.2s;
 }
 
 .notification-icon:hover {
-  color: #409eff;
+  color: var(--color-primary);
 }
 
 .notify-item {
@@ -258,7 +259,7 @@ onUnmounted(() => {
 }
 
 .notify-amount {
-  color: #409eff;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -266,7 +267,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: #5a5e66;
+  color: var(--color-text-secondary);
 }
 
 .username {
@@ -279,11 +280,11 @@ onUnmounted(() => {
 }
 
 .user-info:hover {
-  color: #1890ff;
+  color: var(--color-primary);
 }
 
 /* 用户头像圆形背景 */
 :deep(.el-avatar) {
-  background: linear-gradient(135deg, #1890ff, #36cfc9);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
 }
 </style>

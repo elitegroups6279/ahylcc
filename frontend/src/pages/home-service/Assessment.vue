@@ -1,36 +1,33 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>服务评估</span>
-          <div class="header-actions">
-            <el-date-picker
-              v-model="filterMonth"
-              type="month"
-              clearable
-              placeholder="选择月份"
-              style="width: 160px"
-              value-format="YYYY-MM"
-              @change="reload"
-            />
-            <el-select v-model="filterStatus" clearable placeholder="状态" style="width: 120px" @change="reload">
-              <el-option label="草稿" value="DRAFT" />
-              <el-option label="已提交" value="SUBMITTED" />
-              <el-option label="已确认" value="CONFIRMED" />
-            </el-select>
-            <el-select v-model="filterGrade" clearable placeholder="等级" style="width: 120px" @change="reload">
-              <el-option label="优秀" value="优秀" />
-              <el-option label="良好" value="良好" />
-              <el-option label="合格" value="合格" />
-              <el-option label="不合格" value="不合格" />
-            </el-select>
-            <el-button @click="fetchList">查询</el-button>
-            <el-button type="primary" @click="openCreate">新增评估</el-button>
-          </div>
-        </div>
+    <PageHeader title="服务评估">
+      <template #actions>
+        <el-date-picker
+          v-model="filterMonth"
+          type="month"
+          clearable
+          placeholder="选择月份"
+          style="width: 160px"
+          value-format="YYYY-MM"
+          @change="reload"
+        />
+        <el-select v-model="filterStatus" clearable placeholder="状态" style="width: 120px" @change="reload">
+          <el-option label="草稿" value="DRAFT" />
+          <el-option label="已提交" value="SUBMITTED" />
+          <el-option label="已确认" value="CONFIRMED" />
+        </el-select>
+        <el-select v-model="filterGrade" clearable placeholder="等级" style="width: 120px" @change="reload">
+          <el-option label="优秀" value="优秀" />
+          <el-option label="良好" value="良好" />
+          <el-option label="合格" value="合格" />
+          <el-option label="不合格" value="不合格" />
+        </el-select>
+        <el-button @click="fetchList">查询</el-button>
+        <el-button type="primary" @click="openCreate">新增评估</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <div style="overflow-x: auto">
         <el-table :data="list" v-loading="loading" row-key="id">
           <el-table-column prop="assessmentNo" label="评估编号" width="160" />
@@ -424,6 +421,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 import { useAuthStore } from '../../store/auth'
 

@@ -1,13 +1,12 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>报表导出</span>
-          <el-button @click="downloadAll" :loading="downloading">一键导出本月</el-button>
-        </div>
+    <PageHeader title="报表导出">
+      <template #actions>
+        <el-button @click="downloadAll" :loading="downloading">一键导出本月</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-tabs v-model="activeTab">
         <el-tab-pane label="收费汇总" name="fee">
           <div class="panel">
@@ -94,6 +93,7 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const activeTab = ref('fee')

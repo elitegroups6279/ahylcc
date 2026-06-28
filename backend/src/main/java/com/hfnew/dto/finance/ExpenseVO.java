@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class ExpenseVO {
     private Long id;
     private String expenseType;
+    private String supplyCategory;
     private BigDecimal amount;
     private LocalDate expenseDate;
     private String payee;

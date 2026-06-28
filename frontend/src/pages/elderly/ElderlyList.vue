@@ -1,30 +1,31 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>在住老人列表</span>
-          <div class="header-actions">
-            <el-select v-model="status" placeholder="状态" clearable style="width: 140px" @change="reload">
-              <el-option label="在住" value="ACTIVE" />
-              <el-option label="请假中" value="ON_LEAVE" />
-              <el-option label="退住" value="DISCHARGED" />
-            </el-select>
-            <el-select v-model="category" placeholder="类别" clearable style="width: 130px" @change="reload">
-              <el-option label="社会化" value="SOCIAL" />
-              <el-option label="五保对象" value="WU_BAO" />
-              <el-option label="低保对象" value="LOW_BAO" />
-            </el-select>
-            <el-input v-model="keyword" placeholder="姓名/编号" clearable style="width: 200px" @keyup.enter="reload" />
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="success" :icon="Download" @click="downloadTemplate">下载导入模板</el-button>
-            <el-button type="warning" :icon="Upload" @click="importDialogVisible = true">导入数据</el-button>
-            <el-button type="primary" @click="goAdd">新增入住</el-button>
-          </div>
-        </div>
+    <PageHeader title="老人管理">
+      <template #actions>
+        <el-select v-model="status" placeholder="状态" clearable style="width: 140px" @change="reload">
+          <el-option label="在住" value="ACTIVE" />
+          <el-option label="请假中" value="ON_LEAVE" />
+          <el-option label="退住" value="DISCHARGED" />
+        </el-select>
+        <el-select v-model="category" placeholder="类别" clearable style="width: 130px" @change="reload">
+          <el-option label="社会化" value="SOCIAL" />
+          <el-option label="五保对象" value="WU_BAO" />
+          <el-option label="低保对象" value="LOW_BAO" />
+        </el-select>
+        <el-input v-model="keyword" placeholder="姓名/编号" clearable style="width: 200px" @keyup.enter="reload" />
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="success" :icon="Download" @click="downloadTemplate">下载导入模板</el-button>
+        <el-button type="warning" :icon="Upload" @click="importDialogVisible = true">导入数据</el-button>
+        <el-button type="primary" @click="goAdd">新增入住</el-button>
       </template>
+    </PageHeader>
+
+    <el-card>
 
       <el-table :data="list" v-loading="loading" row-key="id">
+        <template #empty>
+          <el-empty description="暂无数据" :image-size="80" />
+        </template>
         <el-table-column prop="uniqueNo" label="编号" width="120" />
         <el-table-column prop="name" label="姓名" width="120" />
         <el-table-column label="性别" width="80">
@@ -171,6 +172,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Upload } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
+import PageHeader from '../../components/common/PageHeader.vue'
 
 const router = useRouter()
 const loading = ref(false)

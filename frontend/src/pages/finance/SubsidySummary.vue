@@ -1,19 +1,18 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>补贴核算对账台</span>
-          <el-date-picker
-            v-model="month"
-            type="month"
-            value-format="YYYY-MM"
-            placeholder="选择月份"
-            @change="loadData"
-          />
-        </div>
+    <PageHeader title="补贴核算对账台">
+      <template #actions>
+        <el-date-picker
+          v-model="month"
+          type="month"
+          value-format="YYYY-MM"
+          placeholder="选择月份"
+          @change="loadData"
+        />
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-tabs v-model="activeTab">
         <!-- Tab 1: 机构收入汇总 -->
         <el-tab-pane label="机构收入汇总" name="overview">
@@ -77,6 +76,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const month = ref(new Date().toISOString().slice(0, 7))

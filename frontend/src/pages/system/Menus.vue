@@ -1,16 +1,13 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>菜单管理</span>
-          <div class="header-actions">
-            <el-button @click="fetchTree">刷新</el-button>
-            <el-button type="primary" @click="openCreateRoot">新增一级菜单</el-button>
-          </div>
-        </div>
+    <PageHeader title="菜单管理">
+      <template #actions>
+        <el-button @click="fetchTree">刷新</el-button>
+        <el-button type="primary" @click="openCreateRoot">新增一级菜单</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table
         :data="tree"
         v-loading="loading"
@@ -104,6 +101,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const loading = ref(false)

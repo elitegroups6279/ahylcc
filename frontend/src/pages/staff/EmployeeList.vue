@@ -1,28 +1,25 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>员工管理</span>
-          <div class="header-actions">
-            <el-select v-model="filters.positionType" placeholder="岗位类型" clearable style="width: 140px" @change="reload">
-              <el-option label="管理人员" value="MANAGER" />
-              <el-option label="财务人员" value="FINANCE" />
-              <el-option label="人事专员" value="HR" />
-              <el-option label="后勤人员" value="LOGISTICS" />
-              <el-option label="其他" value="OTHER" />
-            </el-select>
-            <el-select v-model="filters.status" placeholder="状态" clearable style="width: 140px" @change="reload">
-              <el-option label="在职" value="ACTIVE" />
-              <el-option label="离职" value="RESIGNED" />
-            </el-select>
-            <el-input v-model="filters.keyword" placeholder="姓名/电话" clearable style="width: 200px" @keyup.enter="reload" />
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openCreate">新增员工</el-button>
-          </div>
-        </div>
+    <PageHeader title="员工管理">
+      <template #actions>
+        <el-select v-model="filters.positionType" placeholder="岗位类型" clearable style="width: 140px" @change="reload">
+          <el-option label="管理人员" value="MANAGER" />
+          <el-option label="财务人员" value="FINANCE" />
+          <el-option label="人事专员" value="HR" />
+          <el-option label="后勤人员" value="LOGISTICS" />
+          <el-option label="其他" value="OTHER" />
+        </el-select>
+        <el-select v-model="filters.status" placeholder="状态" clearable style="width: 140px" @change="reload">
+          <el-option label="在职" value="ACTIVE" />
+          <el-option label="离职" value="RESIGNED" />
+        </el-select>
+        <el-input v-model="filters.keyword" placeholder="姓名/电话" clearable style="width: 200px" @keyup.enter="reload" />
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openCreate">新增员工</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="姓名" width="120" />
@@ -139,6 +136,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 // 岗位类型映射

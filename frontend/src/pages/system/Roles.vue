@@ -1,16 +1,13 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>角色管理</span>
-          <div class="header-actions">
-            <el-input v-model="keyword" placeholder="角色名称/编码" clearable style="width: 220px" @keyup.enter="reload" />
-            <el-button type="primary" @click="openCreate">新增角色</el-button>
-          </div>
-        </div>
+    <PageHeader title="角色管理">
+      <template #actions>
+        <el-input v-model="keyword" placeholder="角色名称/编码" clearable style="width: 220px" @keyup.enter="reload" />
+        <el-button type="primary" @click="openCreate">新增角色</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="roleName" label="角色名称" width="180" />
@@ -88,6 +85,7 @@
 <script setup>
 import { onMounted, reactive, ref, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const loading = ref(false)

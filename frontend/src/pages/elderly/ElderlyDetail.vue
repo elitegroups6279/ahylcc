@@ -1,23 +1,20 @@
 <template>
   <div class="page" v-loading="loading">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>老人档案</span>
-          <div class="header-actions">
-            <template v-if="isEditing">
-              <el-button type="primary" @click="saveChanges" :loading="saving">保存</el-button>
-              <el-button @click="cancelEdit">取消</el-button>
-            </template>
-            <template v-else>
-              <el-button v-if="detail.status === 'DISCHARGED'" type="warning" @click="undoDischarge">撤销退住</el-button>
-              <el-button v-if="detail.status !== 'DISCHARGED'" type="primary" @click="startEdit">编辑</el-button>
-              <el-button @click="goBack">返回</el-button>
-            </template>
-          </div>
-        </div>
+    <PageHeader title="老人档案">
+      <template #actions>
+        <template v-if="isEditing">
+          <el-button type="primary" @click="saveChanges" :loading="saving">保存</el-button>
+          <el-button @click="cancelEdit">取消</el-button>
+        </template>
+        <template v-else>
+          <el-button v-if="detail.status === 'DISCHARGED'" type="warning" @click="undoDischarge">撤销退住</el-button>
+          <el-button v-if="detail.status !== 'DISCHARGED'" type="primary" @click="startEdit">编辑</el-button>
+          <el-button @click="goBack">返回</el-button>
+        </template>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-descriptions :column="3" border>
         <el-descriptions-item label="编号">{{ detail.uniqueNo }}</el-descriptions-item>
         <el-descriptions-item label="姓名">
@@ -213,6 +210,7 @@
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const route = useRoute()

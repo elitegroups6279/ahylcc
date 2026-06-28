@@ -13,5 +13,8 @@ public class InventoryOutCreateRequest {
     private String specification;
     private String supplyCategory;
     private LocalDate outDate;
+    private Long recipientStaffId;
+    private String recipientName;
+    private String recipientSignUrl;
     private String remark;
 }

@@ -6,11 +6,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hfnew.common.PageResult;
 import com.hfnew.dto.warehouse.InventoryInCreateRequest;
 import com.hfnew.dto.warehouse.InventoryInVO;
+import com.hfnew.entity.Budget;
 import com.hfnew.entity.ExpenseRecord;
 import com.hfnew.entity.InventoryIn;
 import com.hfnew.entity.Material;
 import com.hfnew.entity.Stock;
 import com.hfnew.exception.BizException;
+import com.hfnew.mapper.BudgetMapper;
 import com.hfnew.mapper.ExpenseRecordMapper;
 import com.hfnew.mapper.InventoryInMapper;
 import com.hfnew.mapper.MaterialMapper;
@@ -27,6 +29,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,11 +41,16 @@ public class InventoryInService {
     private final MaterialMapper materialMapper;
     private final ExpenseRecordMapper expenseRecordMapper;
     private final BankAccountService bankAccountService;
+    private final BudgetService budgetService;
+    private final BudgetMapper budgetMapper;
     private final JdbcTemplate jdbcTemplate;
 
-    public PageResult<InventoryInVO> list(int page, int pageSize) {
+    public PageResult<InventoryInVO> list(int page, int pageSize, String supplyCategory) {
         Page<InventoryIn> pageReq = new Page<>(page, pageSize);
         LambdaQueryWrapper<InventoryIn> wrapper = new LambdaQueryWrapper<>();
+        if (supplyCategory != null && !supplyCategory.isBlank()) {
+            wrapper.eq(InventoryIn::getSupplyCategory, supplyCategory);
+        }
         wrapper.orderByDesc(InventoryIn::getCreateTime).orderByDesc(InventoryIn::getId);
         IPage<InventoryIn> result = inventoryInMapper.selectPage(pageReq, wrapper);
 
@@ -74,12 +82,23 @@ public class InventoryInService {
         in.setOperatorId(operatorId);
         in.setRemark(request.getRemark());
         in.setSupplyCategory(request.getSupplyCategory() != null ? request.getSupplyCategory() : "SOCIAL");
+        in.setAllocationId(request.getAllocationId());
         inventoryInMapper.insert(in);
 
-        Stock stock = stockMapper.selectByMaterialIdForUpdate(request.getMaterialId());
+        if (in.getAllocationId() != null && in.getTotalAmount() != null) {
+            // Update budget used_amount
+            Budget budget = budgetService.getCurrentBudget(in.getSupplyCategory());
+            if (budget != null) {
+                budget.setUsedAmount(budget.getUsedAmount().add(in.getTotalAmount()));
+                budgetMapper.updateById(budget);
+            }
+        }
+
+        Stock stock = stockMapper.selectByMaterialAndCategoryForUpdate(request.getMaterialId(), in.getSupplyCategory());
         if (stock == null) {
             Stock s = new Stock();
             s.setMaterialId(request.getMaterialId());
+            s.setSupplyCategory(in.getSupplyCategory());
             s.setQuantity(request.getQuantity());
             s.setTotalValue(totalAmount);
             stockMapper.insert(s);
@@ -98,6 +117,7 @@ public class InventoryInService {
 
             ExpenseRecord expense = new ExpenseRecord();
             expense.setExpenseType("SUPPLIES");
+            expense.setSupplyCategory(in.getSupplyCategory());
             expense.setAmount(totalAmount);
             expense.setExpenseDate(in.getInDate());
             expense.setPayee(in.getSupplier());
@@ -145,6 +165,7 @@ public class InventoryInService {
         vo.setAttachmentUrl(in.getAttachmentUrl());
         vo.setRemark(in.getRemark());
         vo.setSupplyCategory(in.getSupplyCategory());
+        vo.setAllocationId(in.getAllocationId());
         vo.setCreateTime(in.getCreateTime());
         return vo;
     }
@@ -154,6 +175,13 @@ public class InventoryInService {
         InventoryIn in = inventoryInMapper.selectById(id);
         if (in == null) throw new BizException(404, 404, "入库记录不存在");
 
+        // Capture old values for stock sync BEFORE applying changes
+        Long oldMaterialId = in.getMaterialId();
+        String oldSupplyCategory = in.getSupplyCategory() != null ? in.getSupplyCategory() : "SOCIAL";
+        int oldQty = in.getQuantity() == null ? 0 : in.getQuantity();
+        BigDecimal oldTotalAmount = in.getTotalAmount() == null ? BigDecimal.ZERO : in.getTotalAmount();
+
+        // Apply updates to the entity
         if (request.getMaterialId() != null) in.setMaterialId(request.getMaterialId());
         if (request.getSupplier() != null) in.setSupplier(request.getSupplier());
         if (request.getPurchaseOrderNo() != null) in.setPurchaseOrderNo(request.getPurchaseOrderNo());
@@ -163,13 +191,93 @@ public class InventoryInService {
         if (request.getInDate() != null) in.setInDate(request.getInDate());
         if (request.getRemark() != null) in.setRemark(request.getRemark());
         if (request.getSupplyCategory() != null) in.setSupplyCategory(request.getSupplyCategory());
+        if (request.getAllocationId() != null) in.setAllocationId(request.getAllocationId());
         inventoryInMapper.updateById(in);
+
+        // Sync stock: compute new values after update applied
+        Long newMaterialId = in.getMaterialId();
+        String newSupplyCategory = in.getSupplyCategory() != null ? in.getSupplyCategory() : "SOCIAL";
+        int newQty = in.getQuantity() == null ? 0 : in.getQuantity();
+        BigDecimal newTotalAmount = in.getTotalAmount() == null ? BigDecimal.ZERO : in.getTotalAmount();
+
+        boolean materialChanged = !Objects.equals(oldMaterialId, newMaterialId)
+                || !Objects.equals(oldSupplyCategory, newSupplyCategory);
+
+        if (materialChanged) {
+            // Subtract old quantity/value from old stock
+            Stock oldStock = stockMapper.selectByMaterialAndCategoryForUpdate(oldMaterialId, oldSupplyCategory);
+            if (oldStock != null) {
+                int existingQty = oldStock.getQuantity() == null ? 0 : oldStock.getQuantity();
+                BigDecimal existingValue = oldStock.getTotalValue() == null ? BigDecimal.ZERO : oldStock.getTotalValue();
+                int remainQty = existingQty - oldQty;
+                if (remainQty < 0) remainQty = 0;
+                BigDecimal remainValue = existingValue.subtract(oldTotalAmount);
+                if (remainValue.compareTo(BigDecimal.ZERO) < 0) remainValue = BigDecimal.ZERO;
+                oldStock.setQuantity(remainQty);
+                oldStock.setTotalValue(remainValue);
+                stockMapper.updateById(oldStock);
+            }
+            // Add new quantity/value to new stock
+            Stock newStock = stockMapper.selectByMaterialAndCategoryForUpdate(newMaterialId, newSupplyCategory);
+            if (newStock == null) {
+                Stock s = new Stock();
+                s.setMaterialId(newMaterialId);
+                s.setSupplyCategory(newSupplyCategory);
+                s.setQuantity(newQty);
+                s.setTotalValue(newTotalAmount);
+                stockMapper.insert(s);
+            } else {
+                int existingQty = newStock.getQuantity() == null ? 0 : newStock.getQuantity();
+                BigDecimal existingValue = newStock.getTotalValue() == null ? BigDecimal.ZERO : newStock.getTotalValue();
+                newStock.setQuantity(existingQty + newQty);
+                newStock.setTotalValue(existingValue.add(newTotalAmount));
+                stockMapper.updateById(newStock);
+            }
+        } else {
+            // Same material/category - adjust by diff
+            int diff = newQty - oldQty;
+            BigDecimal diffAmount = newTotalAmount.subtract(oldTotalAmount);
+            if (diff != 0 || diffAmount.compareTo(BigDecimal.ZERO) != 0) {
+                Stock stock = stockMapper.selectByMaterialAndCategoryForUpdate(newMaterialId, newSupplyCategory);
+                if (stock != null) {
+                    int existingQty = stock.getQuantity() == null ? 0 : stock.getQuantity();
+                    BigDecimal existingValue = stock.getTotalValue() == null ? BigDecimal.ZERO : stock.getTotalValue();
+                    int updatedQty = existingQty + diff;
+                    if (updatedQty < 0) updatedQty = 0;
+                    BigDecimal updatedValue = existingValue.add(diffAmount);
+                    if (updatedValue.compareTo(BigDecimal.ZERO) < 0) updatedValue = BigDecimal.ZERO;
+                    stock.setQuantity(updatedQty);
+                    stock.setTotalValue(updatedValue);
+                    stockMapper.updateById(stock);
+                }
+            }
+        }
     }
 
     @Transactional
     public void delete(Long id) {
         InventoryIn in = inventoryInMapper.selectById(id);
         if (in == null) throw new BizException(404, 404, "入库记录不存在");
+
+        // Subtract quantity/value from stock BEFORE deleting
+        Long materialId = in.getMaterialId();
+        String supplyCategory = in.getSupplyCategory() != null ? in.getSupplyCategory() : "SOCIAL";
+        int qty = in.getQuantity() == null ? 0 : in.getQuantity();
+        BigDecimal totalAmount = in.getTotalAmount() == null ? BigDecimal.ZERO : in.getTotalAmount();
+
+        Stock stock = stockMapper.selectByMaterialAndCategoryForUpdate(materialId, supplyCategory);
+        if (stock != null) {
+            int existingQty = stock.getQuantity() == null ? 0 : stock.getQuantity();
+            BigDecimal existingValue = stock.getTotalValue() == null ? BigDecimal.ZERO : stock.getTotalValue();
+            int remainQty = existingQty - qty;
+            if (remainQty < 0) remainQty = 0;
+            BigDecimal remainValue = existingValue.subtract(totalAmount);
+            if (remainValue.compareTo(BigDecimal.ZERO) < 0) remainValue = BigDecimal.ZERO;
+            stock.setQuantity(remainQty);
+            stock.setTotalValue(remainValue);
+            stockMapper.updateById(stock);
+        }
+
         inventoryInMapper.deleteById(id);
     }
 }

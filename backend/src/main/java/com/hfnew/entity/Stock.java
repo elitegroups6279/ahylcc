@@ -20,6 +20,8 @@ public class Stock {
 
     private Long materialId;
 
+    private String supplyCategory;
+
     private Integer quantity;
 
     private BigDecimal totalValue;

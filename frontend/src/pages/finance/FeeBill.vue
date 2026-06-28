@@ -1,54 +1,51 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>月度账单</span>
-          <div class="header-actions">
-            <el-date-picker
-              v-model="billMonth"
-              type="month"
-              value-format="YYYY-MM"
-              placeholder="选择月份"
-              style="width: 160px"
-              @change="loadData"
-            />
-            <el-select
-              v-model="statusFilter"
-              placeholder="状态"
-              clearable
-              style="width: 120px"
-              @change="loadData"
-            >
-              <el-option label="草稿" value="DRAFT" />
-              <el-option label="已确认" value="CONFIRMED" />
-              <el-option label="已结清" value="SETTLED" />
-            </el-select>
-            <el-button type="primary" :loading="generating" @click="generateBills">
-              生成{{ billMonth || '本月' }}账单
-            </el-button>
-            <el-button :disabled="selectedIds.length === 0" @click="batchConfirm">
-              批量确认
-            </el-button>
-            <el-button
-              type="warning"
-              :disabled="selectedConfirmedIds.length === 0"
-              @click="batchSettle"
-            >
-              批量结算
-            </el-button>
-            <el-button
-              v-if="billMonth"
-              type="danger"
-              plain
-              @click="settleMonth"
-            >
-              结算{{ billMonth }}全部已确认
-            </el-button>
-          </div>
-        </div>
+    <PageHeader title="月度账单">
+      <template #actions>
+        <el-date-picker
+          v-model="billMonth"
+          type="month"
+          value-format="YYYY-MM"
+          placeholder="选择月份"
+          style="width: 160px"
+          @change="loadData"
+        />
+        <el-select
+          v-model="statusFilter"
+          placeholder="状态"
+          clearable
+          style="width: 120px"
+          @change="loadData"
+        >
+          <el-option label="草稿" value="DRAFT" />
+          <el-option label="已确认" value="CONFIRMED" />
+          <el-option label="已结清" value="SETTLED" />
+        </el-select>
+        <el-button type="primary" :loading="generating" @click="generateBills">
+          生成{{ billMonth || '本月' }}账单
+        </el-button>
+        <el-button :disabled="selectedIds.length === 0" @click="batchConfirm">
+          批量确认
+        </el-button>
+        <el-button
+          type="warning"
+          :disabled="selectedConfirmedIds.length === 0"
+          @click="batchSettle"
+        >
+          批量结算
+        </el-button>
+        <el-button
+          v-if="billMonth"
+          type="danger"
+          plain
+          @click="settleMonth"
+        >
+          结算{{ billMonth }}全部已确认
+        </el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table
         :data="billList"
         v-loading="loading"
@@ -202,6 +199,7 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const categoryMap = {

@@ -54,7 +54,8 @@ public class InventoryCheckService {
         Material m = materialMapper.selectById(request.getMaterialId());
         if (m == null) throw new BizException(404, 404, "物资不存在");
 
-        Stock stock = stockMapper.selectByMaterialIdForUpdate(request.getMaterialId());
+        String supplyCategory = request.getSupplyCategory() != null ? request.getSupplyCategory() : "SOCIAL";
+        Stock stock = stockMapper.selectByMaterialAndCategoryForUpdate(request.getMaterialId(), supplyCategory);
         int systemQty = stock == null || stock.getQuantity() == null ? 0 : stock.getQuantity();
         BigDecimal totalValueBefore = stock == null || stock.getTotalValue() == null ? BigDecimal.ZERO : stock.getTotalValue();
         BigDecimal avg = systemQty > 0 ? totalValueBefore.divide(new BigDecimal(systemQty), 6, RoundingMode.HALF_UP) : BigDecimal.ZERO;
@@ -69,6 +70,7 @@ public class InventoryCheckService {
         ic.setDifference(diff);
         ic.setCheckDate(request.getCheckDate() == null ? LocalDate.now() : request.getCheckDate());
         ic.setOperatorId(operatorId);
+        ic.setSupplyCategory(supplyCategory);
         ic.setRemark(request.getRemark());
         inventoryCheckMapper.insert(ic);
 
@@ -76,6 +78,7 @@ public class InventoryCheckService {
             if (actualQty > 0) {
                 Stock s = new Stock();
                 s.setMaterialId(request.getMaterialId());
+                s.setSupplyCategory(supplyCategory);
                 s.setQuantity(actualQty);
                 s.setTotalValue(avg.multiply(new BigDecimal(actualQty)).setScale(2, RoundingMode.HALF_UP));
                 stockMapper.insert(s);
@@ -111,6 +114,7 @@ public class InventoryCheckService {
         vo.setDifference(r.getDifference());
         vo.setCheckDate(r.getCheckDate());
         vo.setOperatorId(r.getOperatorId());
+        vo.setSupplyCategory(r.getSupplyCategory());
         vo.setRemark(r.getRemark());
         vo.setCreateTime(r.getCreateTime());
         return vo;

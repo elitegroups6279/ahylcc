@@ -7,13 +7,13 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('../pages/Login.vue'),
-    meta: { requiresAuth: false }
+    meta: { title: '登录', requiresAuth: false }
   },
   {
     path: '/forbidden',
     name: 'Forbidden',
     component: () => import('../pages/Forbidden.vue'),
-    meta: { requiresAuth: false }
+    meta: { title: '无权访问', requiresAuth: false }
   },
   {
     path: '/',
@@ -132,6 +132,12 @@ const routes = [
         component: () => import('../pages/reports/Reports.vue'),
         meta: { title: '报表导出', permission: 'report:export', parent: '报表管理', requiresAuth: true }
       },
+      {
+        path: 'reports/fund-usage',
+        name: 'FundReport',
+        component: () => import('../pages/reports/FundReport.vue'),
+        meta: { title: '资金使用明细', permission: 'warehouse:stock', parent: '报表管理', requiresAuth: true }
+      },
       // 仓库管理
       {
         path: 'warehouse/materials',
@@ -152,6 +158,12 @@ const routes = [
         meta: { title: '出库管理', permission: 'warehouse:out', parent: '仓库管理', requiresAuth: true }
       },
       {
+        path: 'warehouse/outbound-request',
+        name: 'OutboundRequest',
+        component: () => import('../pages/warehouse/OutboundRequest.vue'),
+        meta: { title: '出库审批', permission: 'warehouse:out', parent: '仓库管理', requiresAuth: true }
+      },
+      {
         path: 'warehouse/stock',
         name: 'Stock',
         component: () => import('../pages/warehouse/Stock.vue'),
@@ -162,6 +174,54 @@ const routes = [
         name: 'InventoryCheck',
         component: () => import('../pages/warehouse/InventoryCheck.vue'),
         meta: { title: '盘点管理', permission: 'warehouse:check', parent: '仓库管理', requiresAuth: true }
+      },
+      {
+        path: 'warehouse/supplier',
+        name: 'Supplier',
+        component: () => import('../pages/warehouse/Supplier.vue'),
+        meta: { title: '供应商管理', permission: 'warehouse:supplier', parent: '仓库管理', requiresAuth: true }
+      },
+      {
+        path: 'warehouse/purchase-request',
+        name: 'PurchaseRequest',
+        component: () => import('../pages/warehouse/PurchaseRequest.vue'),
+        meta: { title: '采购申请', permission: 'warehouse:purchase', parent: '仓库管理', requiresAuth: true }
+      },
+      {
+        path: 'warehouse/purchase-receipt',
+        name: 'PurchaseReceipt',
+        component: () => import('../pages/warehouse/PurchaseReceipt.vue'),
+        meta: { title: '到货验收', permission: 'warehouse:purchase', parent: '仓库管理', requiresAuth: true }
+      },
+      {
+        path: 'warehouse/fund-dashboard',
+        name: 'FundDashboard',
+        component: () => import('../pages/warehouse/FundDashboard.vue'),
+        meta: { title: '资金看板', permission: 'warehouse:stock', parent: '仓库管理', requiresAuth: true }
+      },
+      {
+        path: 'warehouse/budget',
+        name: 'Budget',
+        component: () => import('../pages/warehouse/Budget.vue'),
+        meta: { title: '预算管理', permission: 'warehouse:budget', parent: '仓库管理', requiresAuth: true }
+      },
+      {
+        path: 'warehouse/inventory-batch',
+        name: 'InventoryBatch',
+        component: () => import('../pages/warehouse/InventoryBatch.vue'),
+        meta: { title: '批次追踪', permission: 'warehouse:stock', parent: '仓库管理', requiresAuth: true }
+      },
+      {
+        path: 'warehouse/consumption-trend',
+        name: 'ConsumptionTrend',
+        component: () => import('../pages/warehouse/ConsumptionTrend.vue'),
+        meta: { title: '消耗趋势', permission: 'warehouse:stock', parent: '仓库管理', requiresAuth: true }
+      },
+      {
+        path: 'warehouse/alerts',
+        name: 'WarehouseAlerts',
+        component: () => import('../pages/warehouse/WarehouseAlerts.vue'),
+        meta: { title: '预警中心', permission: 'warehouse:stock', parent: '仓库管理', requiresAuth: true }
       },
       // 药物管理
       {

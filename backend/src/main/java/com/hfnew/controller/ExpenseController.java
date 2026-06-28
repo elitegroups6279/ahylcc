@@ -27,10 +27,11 @@ public class ExpenseController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String expenseType,
+            @RequestParam(required = false) String supplyCategory,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
-        return ResponseEntity.ok(ApiResponse.success(expenseRecordService.list(page, pageSize, expenseType, startDate, endDate)));
+        return ResponseEntity.ok(ApiResponse.success(expenseRecordService.list(page, pageSize, expenseType, supplyCategory, startDate, endDate)));
     }
 
     @PostMapping("/api/finance/expenses")
@@ -38,6 +39,14 @@ public class ExpenseController {
     public ResponseEntity<ApiResponse<Long>> create(@RequestBody ExpenseCreateRequest request) {
         Long id = expenseRecordService.create(getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.success(id));
+    }
+
+    @PutMapping("/api/finance/expenses/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @OpLog(module = "财务管理", operation = "修改支出记录")
+    public ResponseEntity<ApiResponse<Void>> update(@PathVariable Long id, @RequestBody ExpenseCreateRequest request) {
+        expenseRecordService.update(id, request);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @DeleteMapping("/api/finance/expenses/{id}")

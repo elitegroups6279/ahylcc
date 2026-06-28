@@ -1,29 +1,26 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>操作日志</span>
-          <div class="header-actions">
-            <el-input v-model="filters.username" placeholder="用户名" clearable style="width: 160px" @keyup.enter="reload" />
-            <el-input v-model="filters.module" placeholder="模块" clearable style="width: 160px" @keyup.enter="reload" />
-            <el-date-picker
-              v-model="filters.timeRange"
-              type="datetimerange"
-              range-separator="~"
-              start-placeholder="开始时间"
-              end-placeholder="结束时间"
-              format="YYYY-MM-DD HH:mm:ss"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              style="width: 360px"
-              @change="reload"
-            />
-            <el-button @click="reset">重置</el-button>
-            <el-button type="primary" @click="reload">查询</el-button>
-          </div>
-        </div>
+    <PageHeader title="操作日志">
+      <template #actions>
+        <el-input v-model="filters.username" placeholder="用户名" clearable style="width: 160px" @keyup.enter="reload" />
+        <el-input v-model="filters.module" placeholder="模块" clearable style="width: 160px" @keyup.enter="reload" />
+        <el-date-picker
+          v-model="filters.timeRange"
+          type="datetimerange"
+          range-separator="~"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          format="YYYY-MM-DD HH:mm:ss"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          style="width: 360px"
+          @change="reload"
+        />
+        <el-button @click="reset">重置</el-button>
+        <el-button type="primary" @click="reload">查询</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="140" />
@@ -64,6 +61,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const loading = ref(false)

@@ -1,18 +1,15 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>服务记录</span>
-          <div class="header-actions">
-            <el-input v-model="orderIdInput" placeholder="订单ID" clearable style="width: 160px" @keyup.enter="applyOrderId" />
-            <el-button @click="applyOrderId">筛选</el-button>
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openCreate">新增记录</el-button>
-          </div>
-        </div>
+    <PageHeader title="服务记录">
+      <template #actions>
+        <el-input v-model="orderIdInput" placeholder="订单ID" clearable style="width: 160px" @keyup.enter="applyOrderId" />
+        <el-button @click="applyOrderId">筛选</el-button>
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openCreate">新增记录</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <div style="overflow-x: auto">
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="90" />
@@ -115,6 +112,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 import { useAuthStore } from '../../store/auth'
 

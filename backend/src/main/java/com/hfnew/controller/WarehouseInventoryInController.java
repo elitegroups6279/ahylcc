@@ -25,9 +25,10 @@ public class WarehouseInventoryInController {
     @PreAuthorize("hasAuthority('warehouse:in')")
     public ResponseEntity<ApiResponse<PageResult<InventoryInVO>>> list(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int pageSize
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String supplyCategory
     ) {
-        return ResponseEntity.ok(ApiResponse.success(inventoryInService.list(page, pageSize)));
+        return ResponseEntity.ok(ApiResponse.success(inventoryInService.list(page, pageSize, supplyCategory)));
     }
 
     @PostMapping

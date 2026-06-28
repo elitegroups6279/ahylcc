@@ -13,19 +13,19 @@ import com.hfnew.exception.BizException;
 import com.hfnew.mapper.InventoryOutMapper;
 import com.hfnew.mapper.MaterialMapper;
 import com.hfnew.mapper.StockMapper;
+import com.hfnew.util.BatchNameLoader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowCallbackHandler;
-import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,9 +37,12 @@ public class InventoryOutService {
     private final MaterialMapper materialMapper;
     private final JdbcTemplate jdbcTemplate;
 
-    public PageResult<InventoryOutVO> list(int page, int pageSize) {
+    public PageResult<InventoryOutVO> list(int page, int pageSize, String supplyCategory) {
         Page<InventoryOut> pageReq = new Page<>(page, pageSize);
         LambdaQueryWrapper<InventoryOut> wrapper = new LambdaQueryWrapper<>();
+        if (supplyCategory != null && !supplyCategory.isBlank()) {
+            wrapper.eq(InventoryOut::getSupplyCategory, supplyCategory);
+        }
         wrapper.orderByDesc(InventoryOut::getCreateTime).orderByDesc(InventoryOut::getId);
         IPage<InventoryOut> result = inventoryOutMapper.selectPage(pageReq, wrapper);
 
@@ -55,7 +58,8 @@ public class InventoryOutService {
         Material m = materialMapper.selectById(request.getMaterialId());
         if (m == null) throw new BizException(404, 404, "物资不存在");
 
-        Stock stock = stockMapper.selectByMaterialIdForUpdate(request.getMaterialId());
+        String supplyCategory = request.getSupplyCategory() != null ? request.getSupplyCategory() : "SOCIAL";
+        Stock stock = stockMapper.selectByMaterialAndCategoryForUpdate(request.getMaterialId(), supplyCategory);
         if (stock == null || stock.getQuantity() == null || stock.getQuantity() < request.getQuantity()) {
             throw new BizException(400, 400, "库存不足");
         }
@@ -84,7 +88,10 @@ public class InventoryOutService {
         out.setOutDate(request.getOutDate() == null ? LocalDate.now() : request.getOutDate());
         out.setStatus("APPROVED");
         out.setSpecification(request.getSpecification());
-        out.setSupplyCategory(request.getSupplyCategory() != null ? request.getSupplyCategory() : "SOCIAL");
+        out.setSupplyCategory(supplyCategory);
+        out.setRecipientStaffId(request.getRecipientStaffId());
+        out.setRecipientName(request.getRecipientName());
+        out.setRecipientSignUrl(request.getRecipientSignUrl());
         out.setRemark(request.getRemark());
         inventoryOutMapper.insert(out);
 
@@ -92,14 +99,8 @@ public class InventoryOutService {
     }
 
     private Map<Long, String> loadMaterialNames(List<Long> materialIds) {
-        Map<Long, String> map = new HashMap<>();
-        if (materialIds == null || materialIds.isEmpty()) return map;
-        List<Long> ids = materialIds.stream().distinct().filter(x -> x != null).collect(Collectors.toList());
-        if (ids.isEmpty()) return map;
-        String in = ids.stream().map(x -> "?").collect(Collectors.joining(","));
-        String sql = "SELECT id, name FROM t_material WHERE deleted = 0 AND id IN (" + in + ")";
-        jdbcTemplate.query(sql, (RowCallbackHandler) rs -> map.put(rs.getLong("id"), rs.getString("name")), ids.toArray());
-        return map;
+        Set<Long> ids = materialIds == null ? Set.of() : materialIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        return BatchNameLoader.loadNames(jdbcTemplate, "t_material", "id", "name", ids);
     }
 
     private InventoryOutVO toVO(InventoryOut out, String materialName) {
@@ -115,6 +116,9 @@ public class InventoryOutService {
         vo.setStatus(out.getStatus());
         vo.setSpecification(out.getSpecification());
         vo.setSupplyCategory(out.getSupplyCategory());
+        vo.setRecipientStaffId(out.getRecipientStaffId());
+        vo.setRecipientName(out.getRecipientName());
+        vo.setRecipientSignUrl(out.getRecipientSignUrl());
         vo.setRemark(out.getRemark());
         vo.setCreateTime(out.getCreateTime());
         return vo;
@@ -125,21 +129,87 @@ public class InventoryOutService {
         InventoryOut out = inventoryOutMapper.selectById(id);
         if (out == null) throw new BizException(404, 404, "出库记录不存在");
 
+        // Capture old values for stock sync BEFORE applying changes
+        Long oldMaterialId = out.getMaterialId();
+        String oldSupplyCategory = out.getSupplyCategory() != null ? out.getSupplyCategory() : "SOCIAL";
+        int oldQty = out.getQuantity() == null ? 0 : out.getQuantity();
+
+        // Apply updates to the entity
         if (request.getMaterialId() != null) out.setMaterialId(request.getMaterialId());
         if (request.getDepartment() != null) out.setDepartment(request.getDepartment());
         if (request.getPurpose() != null) out.setPurpose(request.getPurpose());
         if (request.getQuantity() != null) out.setQuantity(request.getQuantity());
         if (request.getSpecification() != null) out.setSpecification(request.getSpecification());
         if (request.getSupplyCategory() != null) out.setSupplyCategory(request.getSupplyCategory());
+        if (request.getRecipientStaffId() != null) out.setRecipientStaffId(request.getRecipientStaffId());
+        if (request.getRecipientName() != null) out.setRecipientName(request.getRecipientName());
+        if (request.getRecipientSignUrl() != null) out.setRecipientSignUrl(request.getRecipientSignUrl());
         if (request.getOutDate() != null) out.setOutDate(request.getOutDate());
         if (request.getRemark() != null) out.setRemark(request.getRemark());
         inventoryOutMapper.updateById(out);
+
+        // Sync stock: outbound reduces stock
+        Long newMaterialId = out.getMaterialId();
+        String newSupplyCategory = out.getSupplyCategory() != null ? out.getSupplyCategory() : "SOCIAL";
+        int newQty = out.getQuantity() == null ? 0 : out.getQuantity();
+
+        boolean materialChanged = !Objects.equals(oldMaterialId, newMaterialId)
+                || !Objects.equals(oldSupplyCategory, newSupplyCategory);
+
+        if (materialChanged) {
+            // Return old quantity to old stock
+            Stock oldStock = stockMapper.selectByMaterialAndCategoryForUpdate(oldMaterialId, oldSupplyCategory);
+            if (oldStock != null) {
+                int existingQty = oldStock.getQuantity() == null ? 0 : oldStock.getQuantity();
+                oldStock.setQuantity(existingQty + oldQty);
+                stockMapper.updateById(oldStock);
+            }
+            // Subtract new quantity from new stock
+            Stock newStock = stockMapper.selectByMaterialAndCategoryForUpdate(newMaterialId, newSupplyCategory);
+            if (newStock != null) {
+                int existingQty = newStock.getQuantity() == null ? 0 : newStock.getQuantity();
+                int remainQty = existingQty - newQty;
+                if (remainQty < 0) {
+                    throw new BizException(400, 400, "库存不足");
+                }
+                newStock.setQuantity(remainQty);
+                stockMapper.updateById(newStock);
+            }
+        } else {
+            // Same material/category - adjust by diff (more outbound = less stock)
+            int diff = newQty - oldQty;
+            if (diff != 0) {
+                Stock stock = stockMapper.selectByMaterialAndCategoryForUpdate(newMaterialId, newSupplyCategory);
+                if (stock != null) {
+                    int existingQty = stock.getQuantity() == null ? 0 : stock.getQuantity();
+                    int remainQty = existingQty - diff;
+                    if (remainQty < 0) {
+                        throw new BizException(400, 400, "库存不足");
+                    }
+                    stock.setQuantity(remainQty);
+                    stockMapper.updateById(stock);
+                }
+            }
+        }
     }
 
     @Transactional
     public void delete(Long id) {
         InventoryOut out = inventoryOutMapper.selectById(id);
         if (out == null) throw new BizException(404, 404, "出库记录不存在");
+
+        // Return quantity to stock BEFORE deleting
+        Long materialId = out.getMaterialId();
+        String supplyCategory = out.getSupplyCategory() != null ? out.getSupplyCategory() : "SOCIAL";
+        int qty = out.getQuantity() == null ? 0 : out.getQuantity();
+
+        Stock stock = stockMapper.selectByMaterialAndCategoryForUpdate(materialId, supplyCategory);
+        if (stock != null) {
+            int existingQty = stock.getQuantity() == null ? 0 : stock.getQuantity();
+            stock.setQuantity(existingQty + qty);
+            stockMapper.updateById(stock);
+        }
+
         inventoryOutMapper.deleteById(id);
     }
 }

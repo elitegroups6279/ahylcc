@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -116,6 +117,12 @@ public class HomeServiceOrderService {
     }
 
     private Map<Long, String> loadNames(String table, String nameCol, List<Long> idsRaw) {
+        Set<String> allowedColumns = Set.of("name", "real_name", "staff_name");
+        Set<String> allowedTables = Set.of("t_elderly", "t_user", "t_staff");
+        if (!allowedColumns.contains(nameCol) || !allowedTables.contains(table)) {
+            throw new IllegalArgumentException("Invalid column or table name");
+        }
+
         Map<Long, String> map = new HashMap<>();
         if (idsRaw == null || idsRaw.isEmpty()) return map;
         List<Long> ids = idsRaw.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList());

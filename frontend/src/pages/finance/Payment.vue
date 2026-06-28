@@ -1,5 +1,18 @@
 <template>
   <div class="cashflow-page">
+    <PageHeader title="收入管理">
+      <template #actions>
+        <el-button-group>
+          <el-button type="success" :plain="activeView !== 'income'" @click="switchView('income')">
+            收入管理
+          </el-button>
+          <el-button type="danger" :plain="activeView !== 'expense'" @click="switchView('expense')">
+            支出管理
+          </el-button>
+        </el-button-group>
+      </template>
+    </PageHeader>
+
     <!-- 顶部统计卡片 -->
     <el-row :gutter="16" style="margin-bottom: 20px">
       <el-col :span="8">
@@ -24,18 +37,6 @@
       </el-col>
     </el-row>
 
-    <!-- 按钮组切换 -->
-    <div style="margin-bottom: 20px">
-      <el-button-group>
-        <el-button type="success" :plain="activeView !== 'income'" @click="switchView('income')">
-          收入管理
-        </el-button>
-        <el-button type="danger" :plain="activeView !== 'expense'" @click="switchView('expense')">
-          支出管理
-        </el-button>
-      </el-button-group>
-    </div>
-
     <!-- 收入管理视图 -->
     <div v-if="activeView === 'income'">
       <!-- 筛选栏 -->
@@ -53,6 +54,9 @@
 
       <!-- 收入列表表格 -->
       <el-table :data="incomeList" border stripe v-loading="incomeLoading">
+        <template #empty>
+          <el-empty description="暂无数据" :image-size="80" />
+        </template>
         <el-table-column label="收入类型" width="110">
           <template #default="{ row }">
             {{ incomeTypeMap[row.incomeType] || row.incomeType || '-' }}
@@ -150,6 +154,9 @@
 
       <!-- 支出列表表格 -->
       <el-table :data="expenseList" border stripe v-loading="expenseLoading">
+        <template #empty>
+          <el-empty description="暂无数据" :image-size="80" />
+        </template>
         <el-table-column label="支出类型" width="120">
           <template #default="{ row }">
             {{ expenseTypeMap[row.expenseType] || row.expenseType }}
@@ -269,6 +276,18 @@
             <el-option v-for="t in expenseTypes" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
         </el-form-item>
+        <el-form-item label="供应类别" prop="supplyCategory">
+          <el-select v-model="expenseForm.supplyCategory" placeholder="请选择供应类别" clearable>
+            <el-option label="社会化" value="SOCIAL" />
+            <el-option label="集中供养" value="CENTRALIZED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="供应类别" prop="supplyCategory">
+          <el-select v-model="expenseForm.supplyCategory" placeholder="请选择供应类别" clearable>
+            <el-option label="社会化" value="SOCIAL" />
+            <el-option label="集中供养" value="CENTRALIZED" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="金额" prop="amount">
           <el-input-number v-model="expenseForm.amount" :min="0.01" :precision="2" :step="10" style="width: 220px" />
         </el-form-item>
@@ -302,6 +321,7 @@
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api as client } from '../../api/client'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { useAuthStore } from '../../store/auth'
 
 const authStore = useAuthStore()
@@ -401,6 +421,7 @@ const expenseFormRef = ref()
 const expenseSaving = ref(false)
 const expenseForm = reactive({
   expenseType: '',
+  supplyCategory: '',
   amount: 0,
   payee: '',
   expenseDate: '',
@@ -601,6 +622,7 @@ async function submitExpense() {
   try {
     const resp = await client.post('/api/finance/expenses', {
       expenseType: expenseForm.expenseType,
+      supplyCategory: expenseForm.supplyCategory || null,
       amount: expenseForm.amount,
       payee: expenseForm.payee,
       expenseDate: expenseForm.expenseDate,
@@ -614,6 +636,7 @@ async function submitExpense() {
     showExpenseDialog.value = false
     // 重置表单
     expenseForm.expenseType = ''
+    expenseForm.supplyCategory = ''
     expenseForm.amount = 0
     expenseForm.payee = ''
     expenseForm.expenseDate = ''

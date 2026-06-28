@@ -1,21 +1,20 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>护工管理</span>
-          <div class="header-actions">
-            <el-select v-model="status" placeholder="状态" clearable style="width: 140px" @change="reload">
-              <el-option label="在职" value="ACTIVE" />
-              <el-option label="离职" value="RESIGNED" />
-            </el-select>
-            <el-input v-model="keyword" placeholder="姓名/电话" clearable style="width: 200px" @keyup.enter="reload" />
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openCreate">新增护工</el-button>
-          </div>
-        </div>
+    <PageHeader title="员工管理">
+      <template #actions>
+        <el-select v-model="status" placeholder="状态" clearable style="width: 140px" @change="reload">
+          <el-option label="在职" value="ACTIVE" />
+          <el-option label="离职" value="RESIGNED" />
+        </el-select>
+        <el-input v-model="keyword" placeholder="姓名/电话" clearable style="width: 200px" @keyup.enter="reload" />
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openCreate">新增护工</el-button>
       </template>
+    </PageHeader>
 
+    <StatsCardGroup :items="statsItems" />
+
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="姓名" width="140" />
@@ -166,10 +165,12 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Close } from '@element-plus/icons-vue'
+import { Check, Close, User, UserFilled, Tickets } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
+import PageHeader from '../../components/common/PageHeader.vue'
+import StatsCardGroup from '../../components/common/StatsCardGroup.vue'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -179,6 +180,13 @@ const page = ref(1)
 const pageSize = ref(10)
 const keyword = ref('')
 const status = ref('')
+
+const statsItems = computed(() => [
+  { label: '护工总数', value: total.value, icon: User, gradient: 'linear-gradient(135deg, #2B7A78 0%, #3AAFA9 100%)' },
+  { label: '在职护工', value: list.value.filter(s => s.status === 'ACTIVE').length, icon: UserFilled, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+  { label: '实习护工', value: list.value.filter(s => s.probationStatus === 'INTERN').length, icon: Tickets, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
+  { label: '有护工证', value: list.value.filter(s => s.hasCaregiverCert === 1).length, icon: Check, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }
+])
 
 const dialogVisible = ref(false)
 const dialogMode = ref('create')

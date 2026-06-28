@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class InventoryCheckVO {
     private Long id;
     private Long materialId;
+    private String supplyCategory;
     private String materialName;
     private Integer systemQuantity;
     private Integer actualQuantity;

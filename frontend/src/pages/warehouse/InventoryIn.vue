@@ -1,17 +1,24 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>入库管理</span>
-          <div class="header-actions">
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openCreate">新增入库</el-button>
-          </div>
-        </div>
+    <PageHeader title="入库管理">
+      <template #actions>
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openCreate">新增入库</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
+      <div class="filter-bar">
+        <el-select v-model="filterCategory" placeholder="供应类别" clearable @change="loadData" style="width: 140px; margin-right: 10px;">
+          <el-option label="全部" value="" />
+          <el-option label="社会化" value="SOCIAL" />
+          <el-option label="集中供养" value="CENTRALIZED" />
+        </el-select>
+      </div>
       <el-table :data="list" v-loading="loading" row-key="id">
+        <template #empty>
+          <el-empty description="暂无数据" :image-size="80" />
+        </template>
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="materialName" label="物资" width="200" />
         <el-table-column prop="supplier" label="供应商" width="160" />
@@ -88,7 +95,16 @@
           <el-date-picker v-model="form.inDate" type="date" value-format="YYYY-MM-DD" />
         </el-form-item>
         <el-form-item label="供应商" prop="supplier">
-          <el-input v-model="form.supplier" />
+          <el-select
+            v-model="form.supplier"
+            filterable
+            clearable
+            :loading="supplierLoading"
+            placeholder="请选择供应商"
+            style="width: 100%"
+          >
+            <el-option v-for="s in supplierOptions" :key="s.id" :label="s.name" :value="s.name" />
+          </el-select>
         </el-form-item>
         <el-form-item label="采购单号" prop="purchaseOrderNo">
           <el-input v-model="form.purchaseOrderNo" />
@@ -97,6 +113,23 @@
           <el-select v-model="form.supplyCategory" style="width: 100%">
             <el-option label="社会化物资" value="SOCIAL" />
             <el-option label="集中供养物资" value="CENTRALIZED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="form.supplyCategory === 'CENTRALIZED'" label="拨款批次" prop="allocationId">
+          <el-select
+            v-model="form.allocationId"
+            filterable
+            clearable
+            :loading="allocationLoading"
+            placeholder="请选择拨款批次"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="a in allocationOptions"
+              :key="a.id"
+              :label="`${a.allocateMonth} - ¥${formatAmount(a.totalAmount)}`"
+              :value="a.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item v-if="!editingId" label="同步生成支出">
@@ -124,6 +157,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Edit, Delete } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { useAuthStore } from '../../store/auth'
 
 const authStore = useAuthStore()
@@ -138,6 +172,7 @@ const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+const filterCategory = ref('')
 
 const dialogVisible = ref(false)
 const formRef = ref()
@@ -153,7 +188,8 @@ const form = reactive({
   supplyCategory: 'SOCIAL',
   remark: '',
   syncExpense: false,
-  bankAccountId: null
+  bankAccountId: null,
+  allocationId: null
 })
 
 const rules = {
@@ -164,6 +200,10 @@ const rules = {
 const materialLoading = ref(false)
 const materialOptions = ref([])
 const bankAccounts = ref([])
+const allocationLoading = ref(false)
+const allocationOptions = ref([])
+const supplierLoading = ref(false)
+const supplierOptions = ref([])
 
 function formatAmount(amount) {
   if (amount === null || amount === undefined) return '0.00'
@@ -188,6 +228,38 @@ async function loadBankAccounts() {
   }
 }
 
+async function loadAllocations() {
+  allocationLoading.value = true
+  try {
+    const resp = await api.get('/api/finance/wubao/allocation-records', {
+      params: { page: 1, size: 100 }
+    })
+    const body = resp.data
+    if (body.code === 200) allocationOptions.value = body.data?.list || []
+    else allocationOptions.value = []
+  } catch (e) {
+    console.warn('加载拨款批次失败', e)
+    allocationOptions.value = []
+  } finally {
+    allocationLoading.value = false
+  }
+}
+
+async function loadSuppliers() {
+  supplierLoading.value = true
+  try {
+    const resp = await api.get('/api/supplier/options')
+    const body = resp.data
+    if (body.code === 200) supplierOptions.value = body.data || []
+    else supplierOptions.value = []
+  } catch (e) {
+    console.warn('加载供应商列表失败', e)
+    supplierOptions.value = []
+  } finally {
+    supplierLoading.value = false
+  }
+}
+
 async function searchMaterials(query) {
   materialLoading.value = true
   try {
@@ -205,9 +277,13 @@ async function searchMaterials(query) {
 }
 
 async function fetchList() {
+  loadData()
+}
+
+async function loadData() {
   loading.value = true
   try {
-    const resp = await api.get('/api/warehouse/in', { params: { page: page.value, pageSize: pageSize.value } })
+    const resp = await api.get('/api/warehouse/in', { params: { page: page.value, pageSize: pageSize.value, supplyCategory: filterCategory.value || undefined } })
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '加载失败')
     list.value = body.data?.list || []
@@ -235,6 +311,7 @@ function resetForm() {
   form.remark = ''
   form.syncExpense = false
   form.bankAccountId = null
+  form.allocationId = null
 }
 
 function openCreate() {
@@ -243,6 +320,7 @@ function openCreate() {
   dialogVisible.value = true
   searchMaterials('')
   loadBankAccounts()
+  loadAllocations()
 }
 
 function openEdit(row) {
@@ -288,7 +366,8 @@ async function submit() {
       totalAmount: form.totalAmount,
       inDate: form.inDate,
       supplyCategory: form.supplyCategory,
-      remark: form.remark || null
+      remark: form.remark || null,
+      allocationId: form.supplyCategory === 'CENTRALIZED' ? form.allocationId : null
     }
     let resp
     if (editingId.value) {
@@ -314,6 +393,8 @@ async function submit() {
 
 onMounted(() => {
   fetchList()
+  loadAllocations()
+  loadSuppliers()
 })
 </script>
 
@@ -338,5 +419,11 @@ onMounted(() => {
   margin-top: 14px;
   display: flex;
   justify-content: flex-end;
+}
+
+.filter-bar {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
 }
 </style>

@@ -7,10 +7,12 @@ import com.hfnew.dto.finance.ReconciliationReportVO;
 import com.hfnew.dto.finance.WubaoUsageReportVO;
 import com.hfnew.entity.BankAccount;
 import com.hfnew.entity.BankTransaction;
+import com.hfnew.entity.ExpenseRecord;
 import com.hfnew.entity.WubaoAllocation;
 import com.hfnew.exception.BizException;
 import com.hfnew.mapper.BankAccountMapper;
 import com.hfnew.mapper.BankTransactionMapper;
+import com.hfnew.mapper.ExpenseRecordMapper;
 import com.hfnew.mapper.WubaoAllocationMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,8 +24,10 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,6 +37,7 @@ public class FinanceReportService {
     private final BankAccountMapper bankAccountMapper;
     private final BankTransactionMapper bankTransactionMapper;
     private final WubaoAllocationMapper wubaoAllocationMapper;
+    private final ExpenseRecordMapper expenseRecordMapper;
 
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
 
@@ -134,18 +139,45 @@ public class FinanceReportService {
                     .map(t -> t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            Map<String, List<BankTransaction>> grouped = expenses.stream()
-                    .collect(Collectors.groupingBy(t -> t.getBizType() != null ? t.getBizType() : "OTHER"));
-            for (Map.Entry<String, List<BankTransaction>> entry : grouped.entrySet()) {
-                WubaoUsageReportVO.ExpenseBreakdown item = new WubaoUsageReportVO.ExpenseBreakdown();
-                item.setExpenseType(entry.getKey());
-                item.setCount(entry.getValue().size());
-                item.setAmount(entry.getValue().stream()
-                        .map(t -> t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add));
-                breakdown.add(item);
+            // Batch-fetch ExpenseRecords to resolve supply_category via bizId linkage
+            List<Long> expenseIds = expenses.stream()
+                    .map(BankTransaction::getBizId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            Map<Long, String> expenseCategoryMap = new HashMap<>();
+            if (!expenseIds.isEmpty()) {
+                LambdaQueryWrapper<ExpenseRecord> erWrapper = new LambdaQueryWrapper<>();
+                erWrapper.in(ExpenseRecord::getId, expenseIds);
+                List<ExpenseRecord> expenseRecords = expenseRecordMapper.selectList(erWrapper);
+                for (ExpenseRecord er : expenseRecords) {
+                    expenseCategoryMap.put(er.getId(), er.getSupplyCategory() != null ? er.getSupplyCategory() : "UNKNOWN");
+                }
             }
-            breakdown.sort(Comparator.comparing(WubaoUsageReportVO.ExpenseBreakdown::getExpenseType));
+
+            // Group by bizType, then sub-group by supply_category
+            Map<String, Map<String, List<BankTransaction>>> grouped = expenses.stream()
+                    .collect(Collectors.groupingBy(
+                            t -> t.getBizType() != null ? t.getBizType() : "OTHER",
+                            Collectors.groupingBy(t -> {
+                                if (t.getBizId() == null) return "UNKNOWN";
+                                return expenseCategoryMap.getOrDefault(t.getBizId(), "UNKNOWN");
+                            })
+                    ));
+            for (Map.Entry<String, Map<String, List<BankTransaction>>> bizEntry : grouped.entrySet()) {
+                for (Map.Entry<String, List<BankTransaction>> catEntry : bizEntry.getValue().entrySet()) {
+                    WubaoUsageReportVO.ExpenseBreakdown item = new WubaoUsageReportVO.ExpenseBreakdown();
+                    item.setExpenseType(bizEntry.getKey());
+                    item.setSupplyCategory(catEntry.getKey());
+                    item.setCount(catEntry.getValue().size());
+                    item.setAmount(catEntry.getValue().stream()
+                            .map(t -> t.getAmount() != null ? t.getAmount() : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+                    breakdown.add(item);
+                }
+            }
+            breakdown.sort(Comparator.comparing(WubaoUsageReportVO.ExpenseBreakdown::getExpenseType)
+                    .thenComparing(item -> item.getSupplyCategory() != null ? item.getSupplyCategory() : ""));
         }
 
         vo.setTotalExpensed(totalExpensed);

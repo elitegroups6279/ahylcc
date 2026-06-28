@@ -1,17 +1,14 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>报账管理</span>
-          <div class="header-actions">
-            <el-input v-model="keyword" placeholder="事由关键字" clearable style="width: 220px" @keyup.enter="reload" />
-            <el-button @click="fetchList">刷新</el-button>
-            <el-button type="primary" @click="openCreate">新建报账</el-button>
-          </div>
-        </div>
+    <PageHeader title="报账管理">
+      <template #actions>
+        <el-input v-model="keyword" placeholder="事由关键字" clearable style="width: 220px" @keyup.enter="reload" />
+        <el-button @click="fetchList">刷新</el-button>
+        <el-button type="primary" @click="openCreate">新建报账</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-tabs v-model="activeStatus" @tab-change="reload">
         <el-tab-pane label="全部" name="" />
         <el-tab-pane label="待审批" name="PENDING" />
@@ -79,6 +76,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const loading = ref(false)

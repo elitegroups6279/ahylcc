@@ -7,6 +7,7 @@ import java.time.LocalDate;
 @Data
 public class ExpenseCreateRequest {
     private String expenseType;
+    private String supplyCategory;
     private BigDecimal amount;
     private LocalDate expenseDate;
     private String payee;

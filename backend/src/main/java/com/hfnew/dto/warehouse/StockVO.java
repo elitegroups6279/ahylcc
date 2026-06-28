@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 public class StockVO {
     private Long stockId;
     private Long materialId;
+    private String supplyCategory;
     private String materialName;
     private String category;
     private String specification;

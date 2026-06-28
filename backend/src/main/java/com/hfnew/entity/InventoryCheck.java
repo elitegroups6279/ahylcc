@@ -20,6 +20,8 @@ public class InventoryCheck {
 
     private Long materialId;
 
+    private String supplyCategory;
+
     private Integer systemQuantity;
 
     private Integer actualQuantity;

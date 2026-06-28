@@ -12,6 +12,7 @@ public class ExpenseRecord {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String expenseType;
+    private String supplyCategory;
     private BigDecimal amount;
     private LocalDate expenseDate;
     private String payee;

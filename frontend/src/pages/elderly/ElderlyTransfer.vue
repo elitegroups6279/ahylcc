@@ -1,16 +1,13 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>转床管理</span>
-          <div class="header-actions">
-            <el-button @click="goBack">返回</el-button>
-            <el-button type="primary" :loading="saving" @click="submit">确认转床</el-button>
-          </div>
-        </div>
+    <PageHeader title="转床管理">
+      <template #actions>
+        <el-button @click="goBack">返回</el-button>
+        <el-button type="primary" :loading="saving" @click="submit">确认转床</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
         <el-form-item label="选择老人" prop="elderlyId">
           <el-select
@@ -46,6 +43,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
 const route = useRoute()

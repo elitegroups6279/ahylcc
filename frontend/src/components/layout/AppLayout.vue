@@ -7,10 +7,17 @@
       <el-header class="app-header">
         <Navbar :is-collapse="isCollapse" @toggle-sidebar="isCollapse = !isCollapse" />
       </el-header>
+      <TabBar />
       <el-main class="app-main">
         <Breadcrumb />
         <div class="page-content">
-          <router-view />
+          <router-view v-slot="{ Component }">
+            <transition name="fade-slide" mode="out-in">
+              <keep-alive :max="8" :include="tabsStore.include">
+                <component :is="Component" :key="$route.fullPath" />
+              </keep-alive>
+            </transition>
+          </router-view>
         </div>
       </el-main>
     </el-container>
@@ -22,8 +29,13 @@ import { ref } from 'vue'
 import Sidebar from './Sidebar.vue'
 import Navbar from './Navbar.vue'
 import Breadcrumb from './Breadcrumb.vue'
+import TabBar from '../common/TabBar.vue'
+import { useTabsStore } from '../../store/tabs'
 
 const isCollapse = ref(false)
+const tabsStore = useTabsStore()
+
+tabsStore.initFromStorage()
 </script>
 
 <style scoped>
@@ -33,7 +45,7 @@ const isCollapse = ref(false)
 }
 
 .app-aside {
-  background-color: #001529;
+  background-color: var(--sidebar-bg);
   transition: width 0.28s;
   overflow: hidden;
 }
@@ -47,21 +59,37 @@ const isCollapse = ref(false)
 .app-header {
   height: 50px;
   padding: 0;
-  background-color: #fff;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  background-color: var(--color-bg-card);
+  box-shadow: var(--shadow-sm);
   z-index: 10;
 }
 
 .app-main {
   flex: 1;
-  background-color: #f0f2f5;
+  background-color: var(--color-bg-page);
   padding: 16px;
   overflow-y: auto;
 }
 
 .page-content {
-  background-color: #fff;
-  border-radius: 4px;
+  background-color: var(--color-bg-card);
+  border-radius: var(--radius-sm);
   min-height: calc(100vh - 150px);
+  position: relative;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

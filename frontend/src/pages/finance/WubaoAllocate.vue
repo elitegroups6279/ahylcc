@@ -1,5 +1,7 @@
 <template>
   <div class="wubao-allocate-page">
+    <PageHeader title="五保拨付" />
+
     <!-- 顶部概览卡片 -->
     <el-row :gutter="16" style="margin-bottom: 20px">
       <el-col :span="6">
@@ -113,6 +115,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import PageHeader from '../../components/common/PageHeader.vue'
 import { api as client } from '../../api/client'
 
 // 概览数据

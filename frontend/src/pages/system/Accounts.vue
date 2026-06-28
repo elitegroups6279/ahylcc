@@ -1,16 +1,13 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>账户管理</span>
-          <div class="header-actions">
-            <el-input v-model="keyword" placeholder="用户名/姓名关键字" clearable style="width: 220px" @keyup.enter="reload" />
-            <el-button type="primary" @click="openCreate">新增账户</el-button>
-          </div>
-        </div>
+    <PageHeader title="用户管理">
+      <template #actions>
+        <el-input v-model="keyword" placeholder="用户名/姓名关键字" clearable style="width: 220px" @keyup.enter="reload" />
+        <el-button type="primary" @click="openCreate">新增账户</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table :data="list" v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="140" />
@@ -119,6 +116,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../../api/client'
+import PageHeader from '../../components/common/PageHeader.vue'
 
 const loading = ref(false)
 const saving = ref(false)

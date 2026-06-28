@@ -16,6 +16,7 @@ public class InventoryInCreateRequest {
     private LocalDate inDate;
     private String remark;
     private String supplyCategory;
+    private Long allocationId;
 
     /** 是否同步生成支出记录 */
     private Boolean syncExpense;

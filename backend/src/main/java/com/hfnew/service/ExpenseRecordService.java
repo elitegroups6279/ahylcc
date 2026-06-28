@@ -35,12 +35,15 @@ public class ExpenseRecordService {
     private final JdbcTemplate jdbcTemplate;
     private final BankAccountService bankAccountService;
 
-    public PageResult<ExpenseVO> list(int page, int pageSize, String expenseType, String startDate, String endDate) {
+    public PageResult<ExpenseVO> list(int page, int pageSize, String expenseType, String supplyCategory, String startDate, String endDate) {
         Page<ExpenseRecord> pageReq = new Page<>(page, pageSize);
         LambdaQueryWrapper<ExpenseRecord> wrapper = new LambdaQueryWrapper<>();
         
         if (StringUtils.hasText(expenseType)) {
             wrapper.eq(ExpenseRecord::getExpenseType, expenseType);
+        }
+        if (StringUtils.hasText(supplyCategory)) {
+            wrapper.eq(ExpenseRecord::getSupplyCategory, supplyCategory);
         }
         if (StringUtils.hasText(startDate)) {
             wrapper.ge(ExpenseRecord::getExpenseDate, LocalDate.parse(startDate));
@@ -72,6 +75,7 @@ public class ExpenseRecordService {
 
         ExpenseRecord record = new ExpenseRecord();
         record.setExpenseType(request.getExpenseType());
+        record.setSupplyCategory(request.getSupplyCategory());
         record.setAmount(request.getAmount());
         record.setExpenseDate(request.getExpenseDate());
         record.setPayee(request.getPayee());
@@ -92,6 +96,34 @@ public class ExpenseRecordService {
                 request.getExpenseType(), request.getDescription(), bankAccountId);
 
         return record.getId();
+    }
+
+    @Transactional
+    public void update(Long id, ExpenseCreateRequest request) {
+        ExpenseRecord record = expenseRecordMapper.selectById(id);
+        if (record == null) {
+            throw new BizException(404, 404, "支出记录不存在");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BizException(400, 400, "金额必须大于0");
+        }
+        if (request.getExpenseDate() == null) {
+            throw new BizException(400, 400, "支出日期不能为空");
+        }
+        if (!StringUtils.hasText(request.getExpenseType())) {
+            throw new BizException(400, 400, "支出类型不能为空");
+        }
+
+        record.setExpenseType(request.getExpenseType());
+        record.setSupplyCategory(request.getSupplyCategory());
+        record.setAmount(request.getAmount());
+        record.setExpenseDate(request.getExpenseDate());
+        record.setPayee(request.getPayee());
+        record.setDescription(request.getDescription());
+        record.setRemark(request.getRemark());
+        record.setBankAccountId(request.getBankAccountId());
+
+        expenseRecordMapper.updateById(record);
     }
 
     @Transactional
@@ -156,6 +188,7 @@ public class ExpenseRecordService {
         ExpenseVO vo = new ExpenseVO();
         vo.setId(r.getId());
         vo.setExpenseType(r.getExpenseType());
+        vo.setSupplyCategory(r.getSupplyCategory());
         vo.setAmount(r.getAmount());
         vo.setExpenseDate(r.getExpenseDate());
         vo.setPayee(r.getPayee());

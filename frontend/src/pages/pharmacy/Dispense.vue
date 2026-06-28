@@ -1,15 +1,12 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>发药管理</span>
-          <div class="header-actions">
-            <el-button @click="reloadAll">刷新</el-button>
-          </div>
-        </div>
+    <PageHeader title="药房发药">
+      <template #actions>
+        <el-button @click="reloadAll">刷新</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="批次入库" name="batches" />
         <el-tab-pane label="发药单" name="orders" />
@@ -248,6 +245,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../../api/client'
+import PageHeader from '../../components/common/PageHeader.vue'
 
 const activeTab = ref('batches')
 const saving = ref(false)

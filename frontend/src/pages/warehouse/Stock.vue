@@ -1,19 +1,36 @@
 <template>
   <div class="page">
-    <el-card>
-      <template #header>
-        <div class="header">
-          <span>库存看板</span>
-          <div class="header-actions">
-            <el-switch v-model="warningOnly" active-text="仅预警" @change="reload" />
-            <el-button @click="fetchList">刷新</el-button>
-          </div>
-        </div>
+    <PageHeader title="库存管理">
+      <template #actions>
+        <el-switch v-model="warningOnly" active-text="仅预警" @change="reload" />
+        <el-button @click="fetchList">刷新</el-button>
       </template>
+    </PageHeader>
+
+    <StatsCardGroup :items="statsItems" />
+
+    <el-card>
+      <div class="filter-bar">
+        <el-radio-group v-model="selectedCategory" @change="reload">
+          <el-radio-button label="">全部</el-radio-button>
+          <el-radio-button label="SOCIAL">社会化库存</el-radio-button>
+          <el-radio-button label="CENTRALIZED">集中供养库存</el-radio-button>
+        </el-radio-group>
+      </div>
 
       <el-table :data="list" v-loading="loading" row-key="stockId" :row-class-name="rowClass">
+        <template #empty>
+          <el-empty description="暂无数据" :image-size="80" />
+        </template>
         <el-table-column prop="materialName" label="物资" width="220" />
         <el-table-column prop="category" label="类别" width="160" />
+        <el-table-column label="供应类别" width="160">
+          <template #default="{ row }">
+            <el-tag v-if="row.supplyCategory === 'SOCIAL'" type="primary">社会化物资</el-tag>
+            <el-tag v-else-if="row.supplyCategory === 'CENTRALIZED'" type="success">集中供养物资</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="specification" label="规格" min-width="180" />
         <el-table-column prop="unit" label="单位" width="120" />
         <el-table-column prop="quantity" label="数量" width="120" />
@@ -46,9 +63,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Box, Warning, Money, CircleCheck } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
+import PageHeader from '../../components/common/PageHeader.vue'
+import StatsCardGroup from '../../components/common/StatsCardGroup.vue'
 
 const loading = ref(false)
 const list = ref([])
@@ -56,6 +76,14 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
 const warningOnly = ref(false)
+const selectedCategory = ref('')
+
+const statsItems = computed(() => [
+  { label: '物资种类', value: total.value, icon: Box, gradient: 'linear-gradient(135deg, #2B7A78 0%, #3AAFA9 100%)' },
+  { label: '预警物资', value: list.value.filter(i => i.warning === 1).length, icon: Warning, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
+  { label: '库存总值', value: '¥' + formatAmount(list.value.reduce((s, i) => s + (Number(i.totalValue) || 0), 0)), icon: Money, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
+  { label: '正常物资', value: list.value.filter(i => i.warning !== 1).length, icon: CircleCheck, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }
+])
 
 function formatAmount(amount) {
   if (amount === null || amount === undefined) return '0.00'
@@ -75,7 +103,8 @@ async function fetchList() {
       params: {
         page: page.value,
         pageSize: pageSize.value,
-        warningOnly: warningOnly.value
+        warningOnly: warningOnly.value,
+        supplyCategory: selectedCategory.value || undefined
       }
     })
     const body = resp.data
@@ -114,6 +143,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.filter-bar {
+  margin-bottom: 14px;
 }
 
 .pager {
