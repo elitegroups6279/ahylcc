@@ -426,7 +426,7 @@ import { api } from '../../api/client'
 import { useAuthStore } from '../../store/auth'
 
 const authStore = useAuthStore()
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
 
 // ===================== 列表相关 =====================
 const loading = ref(false)

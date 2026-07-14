@@ -36,7 +36,7 @@
         <el-table-column prop="quantity" label="数量" width="120" />
         <el-table-column prop="warningThreshold" label="预警阈值" width="120" />
         <el-table-column prop="totalValue" label="库存金额" width="140">
-          <template #default="{ row }">￥{{ formatAmount(row.totalValue) }}</template>
+          <template #default="{ row }">￥{{ formatMoney(row.totalValue) }}</template>
         </el-table-column>
         <el-table-column label="预警" width="100">
           <template #default="{ row }">
@@ -69,6 +69,9 @@ import { Box, Warning, Money, CircleCheck } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
 import PageHeader from '../../components/common/PageHeader.vue'
 import StatsCardGroup from '../../components/common/StatsCardGroup.vue'
+import { useFormat } from '@/composables/useFormat'
+
+const { formatMoney } = useFormat()
 
 const loading = ref(false)
 const list = ref([])
@@ -81,16 +84,9 @@ const selectedCategory = ref('')
 const statsItems = computed(() => [
   { label: '物资种类', value: total.value, icon: Box, gradient: 'linear-gradient(135deg, #2B7A78 0%, #3AAFA9 100%)' },
   { label: '预警物资', value: list.value.filter(i => i.warning === 1).length, icon: Warning, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-  { label: '库存总值', value: '¥' + formatAmount(list.value.reduce((s, i) => s + (Number(i.totalValue) || 0), 0)), icon: Money, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
+  { label: '库存总值', value: '¥' + formatMoney(list.value.reduce((s, i) => s + (Number(i.totalValue) || 0), 0)), icon: Money, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
   { label: '正常物资', value: list.value.filter(i => i.warning !== 1).length, icon: CircleCheck, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }
 ])
-
-function formatAmount(amount) {
-  if (amount === null || amount === undefined) return '0.00'
-  const n = Number(amount)
-  if (Number.isNaN(n)) return String(amount)
-  return n.toFixed(2)
-}
 
 function rowClass({ row }) {
   return row.warning === 1 ? 'warning-row' : ''

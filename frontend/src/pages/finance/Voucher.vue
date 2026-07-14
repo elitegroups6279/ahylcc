@@ -1,7 +1,42 @@
 <template>
-  <div class="page">
-    <PageHeader title="凭证管理">
-      <template #actions>
+  <div class="fin-page voucher-page">
+    <PageHeader title="凭证管理" />
+
+    <!-- 概览卡片 -->
+    <div class="fin-stat-row fin-stat-row-4">
+      <div class="fin-stat-card primary">
+        <div class="fin-stat-icon"><Document /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">凭证总数</div>
+          <div class="fin-stat-value">{{ total }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card info">
+        <div class="fin-stat-icon"><Edit /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">草稿</div>
+          <div class="fin-stat-value">{{ draftCount }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card warning">
+        <div class="fin-stat-icon"><Timer /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">待审核</div>
+          <div class="fin-stat-value">{{ submittedCount }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card success">
+        <div class="fin-stat-icon"><CircleCheck /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">已审核</div>
+          <div class="fin-stat-value">{{ approvedCount }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="fin-filter-bar">
+      <div class="fin-filter-left">
         <el-date-picker
           v-model="filterMonth"
           type="month"
@@ -22,13 +57,26 @@
           <el-option label="付" value="付" />
           <el-option label="转" value="转" />
         </el-select>
-        <el-button @click="fetchList">查询</el-button>
-        <el-button type="primary" @click="openCreate">新增凭证</el-button>
-      </template>
-    </PageHeader>
+      </div>
+      <div class="fin-filter-right">
+        <el-button @click="fetchList">
+          <el-icon class="btn-icon"><Refresh /></el-icon> 查询
+        </el-button>
+        <el-button type="primary" @click="openCreate">
+          <el-icon class="btn-icon"><Plus /></el-icon> 新增凭证
+        </el-button>
+      </div>
+    </div>
 
-    <el-card>
-      <el-table :data="list" v-loading="loading" row-key="id">
+    <!-- 凭证列表 -->
+    <div class="fin-table-card">
+      <div class="fin-table-card-header">
+        <div class="fin-table-card-header-left">
+          <span class="fin-table-card-title">凭证列表</span>
+          <span class="fin-table-card-count">共 {{ total }} 条</span>
+        </div>
+      </div>
+      <el-table :data="list" v-loading="loading" row-key="id" class="fin-table">
         <el-table-column label="凭证字号" width="160">
           <template #default="{ row }">{{ row.voucherWord }}-{{ row.voucherNo }}</template>
         </el-table-column>
@@ -37,17 +85,17 @@
           <template #default="{ row }">{{ row.description || getFirstSummary(row) || '-' }}</template>
         </el-table-column>
         <el-table-column label="借方合计" width="130" align="right">
-          <template #default="{ row }">{{ formatAmount(row.totalDebit) }}</template>
+          <template #default="{ row }"><span class="fin-amount">{{ formatAmount(row.totalDebit) }}</span></template>
         </el-table-column>
         <el-table-column label="贷方合计" width="130" align="right">
-          <template #default="{ row }">{{ formatAmount(row.totalCredit) }}</template>
+          <template #default="{ row }"><span class="fin-amount">{{ formatAmount(row.totalCredit) }}</span></template>
         </el-table-column>
         <el-table-column label="附件" width="80" align="center">
           <template #default="{ row }">{{ row.attachmentCount || 0 }}张</template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" size="small">{{ statusText(row.status) }}</el-tag>
+            <el-tag :type="statusTagType(row.status)" size="small" class="fin-type-tag">{{ statusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="260" fixed="right">
@@ -61,7 +109,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pager">
+      <div class="fin-pager">
         <el-pagination
           background
           layout="total, prev, pager, next, sizes"
@@ -73,10 +121,10 @@
           @update:page-size="(s) => { pageSize = s; page = 1; fetchList() }"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 凭证编辑/查看对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="900px" :close-on-click-modal="false" @close="onDialogClose">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="900px" :close-on-click-modal="false" class="fin-dialog" @close="onDialogClose">
       <div class="voucher-header">
         <div class="voucher-info-row">
           <div class="info-item">
@@ -232,7 +280,7 @@
     </el-dialog>
 
     <!-- 驳回原因对话框 -->
-    <el-dialog v-model="rejectDialogVisible" title="驳回凭证" width="420px" append-to-body>
+    <el-dialog v-model="rejectDialogVisible" title="驳回凭证" width="420px" append-to-body class="fin-dialog">
       <el-form ref="rejectFormRef" :model="rejectForm" :rules="rejectRules">
         <el-form-item label="驳回原因" prop="reason">
           <el-input v-model="rejectForm.reason" type="textarea" :rows="3" placeholder="请输入驳回原因" />
@@ -249,6 +297,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Document, Edit, Timer, CircleCheck, Refresh, Plus } from '@element-plus/icons-vue'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 import { useAuthStore } from '../../store/auth'
@@ -265,6 +314,10 @@ const pageSize = ref(10)
 const filterMonth = ref(null)
 const filterStatus = ref('')
 const filterWord = ref('')
+
+const draftCount = computed(() => list.value.filter(i => i.status === 'DRAFT').length)
+const submittedCount = computed(() => list.value.filter(i => i.status === 'SUBMITTED').length)
+const approvedCount = computed(() => list.value.filter(i => i.status === 'APPROVED').length)
 
 function pad2(n) {
   const s = String(n)
@@ -712,28 +765,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page {
+.voucher-page {
   padding: 16px;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.pager {
-  margin-top: 14px;
-  display: flex;
-  justify-content: flex-end;
+.btn-icon {
+  margin-right: 4px;
 }
 
 /* 凭证对话框样式 */

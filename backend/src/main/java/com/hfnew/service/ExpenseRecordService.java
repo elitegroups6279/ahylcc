@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hfnew.common.PageResult;
 import com.hfnew.dto.finance.ExpenseCreateRequest;
 import com.hfnew.dto.finance.ExpenseVO;
+import com.hfnew.entity.BankTransaction;
 import com.hfnew.entity.ExpenseRecord;
 import com.hfnew.entity.User;
 import com.hfnew.exception.BizException;
+import com.hfnew.mapper.BankTransactionMapper;
 import com.hfnew.mapper.ExpenseRecordMapper;
 import com.hfnew.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +37,7 @@ public class ExpenseRecordService {
     private final UserMapper userMapper;
     private final JdbcTemplate jdbcTemplate;
     private final BankAccountService bankAccountService;
+    private final BankTransactionMapper bankTransactionMapper;
 
     public PageResult<ExpenseVO> list(int page, int pageSize, String expenseType, String supplyCategory, String startDate, String endDate) {
         Page<ExpenseRecord> pageReq = new Page<>(page, pageSize);
@@ -114,6 +118,10 @@ public class ExpenseRecordService {
             throw new BizException(400, 400, "支出类型不能为空");
         }
 
+        // 记录变更前数据用于银行流水同步
+        BigDecimal oldAmount = record.getAmount();
+        Long oldBankAccountId = record.getBankAccountId();
+
         record.setExpenseType(request.getExpenseType());
         record.setSupplyCategory(request.getSupplyCategory());
         record.setAmount(request.getAmount());
@@ -124,6 +132,24 @@ public class ExpenseRecordService {
         record.setBankAccountId(request.getBankAccountId());
 
         expenseRecordMapper.updateById(record);
+
+        // 同步银行流水：更新关联的 BankTransaction
+        LambdaQueryWrapper<BankTransaction> txWrapper = new LambdaQueryWrapper<>();
+        txWrapper.eq(BankTransaction::getBizId, id)
+                  .eq(BankTransaction::getTransactionType, "EXPENSE");
+        BankTransaction tx = bankTransactionMapper.selectOne(txWrapper);
+        if (tx != null) {
+            boolean amountChanged = oldAmount != null && !oldAmount.equals(request.getAmount());
+            boolean accountChanged = !Objects.equals(oldBankAccountId, request.getBankAccountId());
+            if (amountChanged || accountChanged) {
+                tx.setAmount(request.getAmount());
+                if (request.getBankAccountId() != null) {
+                    tx.setBankAccountId(request.getBankAccountId());
+                }
+                tx.setDescription(request.getDescription());
+                bankTransactionMapper.updateById(tx);
+            }
+        }
     }
 
     @Transactional

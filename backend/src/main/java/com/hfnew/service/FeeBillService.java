@@ -48,6 +48,7 @@ public class FeeBillService {
     private final SystemConfigService systemConfigService;
     private final SubsidyPolicyService subsidyPolicyService;
     private final ObjectMapper objectMapper;
+    private final NotificationService notificationService;
 
     public PageResult<FeeBillVO> list(int page, int pageSize, String billMonth, Long elderlyId, String status) {
         Page<FeeBill> pageReq = new Page<>(page, pageSize);
@@ -438,20 +439,7 @@ public class FeeBillService {
 
     private Integer calcWarningStatus(Long elderlyId, BigDecimal balance) {
         int warningDays = parseInt(systemConfigService.getConfig("fee_warning_days"), 7);
-        BigDecimal shortTermDailyRate = parseBigDecimal(systemConfigService.getConfig("short_term_daily_rate"), new BigDecimal("180"));
-        BigDecimal contractMonthlyFee = jdbcTemplate.queryForObject(
-                "SELECT contract_monthly_fee FROM t_elderly WHERE id = ? AND deleted = 0",
-                BigDecimal.class, elderlyId);
-        java.time.YearMonth ym = java.time.YearMonth.now();
-        int daysOfMonth = ym.lengthOfMonth();
-        BigDecimal dailyRate = shortTermDailyRate;
-        if (contractMonthlyFee != null && contractMonthlyFee.compareTo(BigDecimal.ZERO) > 0) {
-            dailyRate = contractMonthlyFee.divide(new BigDecimal(daysOfMonth), 6, java.math.RoundingMode.HALF_UP);
-        }
-        int remainingDays = 0;
-        if (dailyRate.compareTo(BigDecimal.ZERO) > 0 && balance != null) {
-            remainingDays = balance.divide(dailyRate, 0, java.math.RoundingMode.FLOOR).intValue();
-        }
+        int remainingDays = notificationService.calcEffectiveRemainingDays(elderlyId);
         return remainingDays < warningDays ? 1 : 0;
     }
 

@@ -272,6 +272,9 @@ import { Edit, Delete } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { useAuthStore } from '../../store/auth'
+import { useFormat } from '@/composables/useFormat'
+
+const { supplyCategoryLabel } = useFormat()
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => {
@@ -356,12 +359,6 @@ const periodText = computed(() => {
 })
 
 const currentUser = computed(() => authStore.username || '-')
-
-function supplyCategoryLabel(cat) {
-  if (cat === 'CENTRALIZED') return '集中供养物资'
-  if (cat === 'SOCIAL') return '社会化物资'
-  return cat || '社会化物资'
-}
 
 let staffSearchTimer = null
 async function searchStaff(query) {

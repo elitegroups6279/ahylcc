@@ -90,4 +90,15 @@ public class AccountController {
         userService.deleteUser(id);
         return ResponseEntity.ok(ApiResponse.success());
     }
+
+    /**
+     * 获取审批人列表（根据业务类型查询有对应审批权限的用户）
+     * bizType: REIMBURSEMENT(报账) / PURCHASE(采购) / OUTBOUND(出库)
+     */
+    @GetMapping("/approvers")
+    public ResponseEntity<ApiResponse<java.util.List<AccountVO>>> listApprovers(
+            @RequestParam String bizType) {
+        java.util.List<AccountVO> approvers = userService.listApprovers(bizType);
+        return ResponseEntity.ok(ApiResponse.success(approvers));
+    }
 }

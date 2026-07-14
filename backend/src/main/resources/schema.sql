@@ -353,18 +353,20 @@ CREATE TABLE IF NOT EXISTS t_material (
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- t_stock: 库存
+-- t_stock: 库存（双轨制: SOCIAL社会化/CENTRALIZED集中供养）
 CREATE TABLE IF NOT EXISTS t_stock (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  material_id BIGINT NOT NULL UNIQUE,
+  material_id BIGINT NOT NULL,
+  supply_category VARCHAR(20) DEFAULT 'SOCIAL' COMMENT 'SOCIAL/CENTRALIZED',
   quantity INT DEFAULT 0,
   total_value DECIMAL(12,2) DEFAULT 0,
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uk_stock_material_category ON t_stock(material_id, supply_category);
 
--- t_inventory_in: 入库记录
+-- t_inventory_in: 入库记录（双模式: DIRECT直接入库/FROM_PURCHASE从采购单入库）
 CREATE TABLE IF NOT EXISTS t_inventory_in (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   material_id BIGINT NOT NULL,
@@ -377,6 +379,11 @@ CREATE TABLE IF NOT EXISTS t_inventory_in (
   operator_id BIGINT,
   attachment_url VARCHAR(500),
   remark VARCHAR(200),
+  supply_category VARCHAR(20) DEFAULT 'SOCIAL' COMMENT 'SOCIAL/CENTRALIZED',
+  allocation_id BIGINT COMMENT '关联五保拨款批次',
+  purchase_receipt_id BIGINT COMMENT '关联验收记录',
+  in_mode VARCHAR(20) DEFAULT 'DIRECT' COMMENT 'DIRECT/FROM_PURCHASE',
+  expense_record_id BIGINT COMMENT '关联支出记录',
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -392,6 +399,10 @@ CREATE TABLE IF NOT EXISTS t_inventory_out (
   operator_id BIGINT,
   out_date DATE NOT NULL,
   status VARCHAR(20) DEFAULT 'APPROVED' COMMENT 'PENDING/APPROVED/REJECTED',
+  supply_category VARCHAR(20) DEFAULT 'SOCIAL' COMMENT 'SOCIAL/CENTRALIZED',
+  recipient_staff_id BIGINT COMMENT '领用护工ID',
+  recipient_name VARCHAR(50) COMMENT '领用人姓名',
+  recipient_sign_url VARCHAR(500) COMMENT '签字图片URL',
   remark VARCHAR(200),
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -551,6 +562,7 @@ CREATE TABLE IF NOT EXISTS t_system_config (
 CREATE TABLE IF NOT EXISTS t_inventory_check (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   material_id BIGINT NOT NULL,
+  supply_category VARCHAR(20) DEFAULT 'SOCIAL' COMMENT 'SOCIAL/CENTRALIZED',
   system_quantity INT COMMENT '系统数量',
   actual_quantity INT COMMENT '实际数量',
   difference INT COMMENT '差异',
@@ -729,12 +741,244 @@ CREATE INDEX idx_elderly_id ON t_elderly_change_log (elderly_id);
 -- ========== 支出记录表 ==========
 CREATE TABLE IF NOT EXISTS t_expense_record (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  expense_type VARCHAR(30) NOT NULL COMMENT 'FOOD/MEDICAL/MAINTENANCE/SALARY/UTILITY/PURCHASE/OTHER',
+  expense_type VARCHAR(30) NOT NULL COMMENT 'FOOD/MEDICAL/MAINTENANCE/SALARY/UTILITY/SUPPLIES/OTHER',
+  supply_category VARCHAR(20) COMMENT '供应类别: SOCIAL/CENTRALIZED',
   amount DECIMAL(12,2) NOT NULL,
   expense_date DATE NOT NULL,
   payee VARCHAR(100) COMMENT '收款方',
   description VARCHAR(500),
   operator_id BIGINT,
+  remark VARCHAR(200),
+  bank_account_id BIGINT COMMENT '出账银行账户',
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 供应商表 ==========
+CREATE TABLE IF NOT EXISTS t_supplier (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL COMMENT '供应商名称',
+  credit_code VARCHAR(50) COMMENT '统一信用代码',
+  contact VARCHAR(50) COMMENT '联系人',
+  phone VARCHAR(50) COMMENT '联系电话',
+  bank_name VARCHAR(100) COMMENT '开户行',
+  bank_account VARCHAR(100) COMMENT '银行账号',
+  status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE在册/DISABLED停用',
+  org_id BIGINT COMMENT '所属机构',
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 采购申请表 ==========
+CREATE TABLE IF NOT EXISTS t_purchase_request (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  request_no VARCHAR(30) NOT NULL UNIQUE COMMENT '申请编号',
+  applicant_id BIGINT NOT NULL COMMENT '申请人ID',
+  applicant_name VARCHAR(50) COMMENT '申请人姓名',
+  items_json TEXT NOT NULL COMMENT '采购明细JSON',
+  total_amount DECIMAL(12,2) NOT NULL COMMENT '采购总额',
+  supply_category VARCHAR(20) COMMENT 'SOCIAL/CENTRALIZED',
+  allocation_id BIGINT COMMENT '关联五保拨款批次',
+  supplier_id BIGINT COMMENT '供应商ID',
+  approval_status VARCHAR(20) DEFAULT 'PENDING' COMMENT 'PENDING/APPROVED/REJECTED',
+  approver_id BIGINT COMMENT '审批人ID',
+  approver_name VARCHAR(50) COMMENT '审批人姓名',
+  approve_time DATETIME COMMENT '审批时间',
+  approve_remark VARCHAR(500) COMMENT '审批备注',
+  remark VARCHAR(500),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 到货验收表 ==========
+CREATE TABLE IF NOT EXISTS t_purchase_receipt (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  purchase_request_id BIGINT NOT NULL COMMENT '关联采购申请',
+  inspector_id BIGINT COMMENT '验收人ID',
+  inspector_name VARCHAR(50) COMMENT '验收人姓名',
+  inspect_result VARCHAR(20) COMMENT 'PASS合格/FAIL不合格/PENDING待验收',
+  actual_quantity INT COMMENT '实收数量',
+  receipt_date DATE COMMENT '验收日期',
+  remark VARCHAR(500),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 出库审批申请表 ==========
+CREATE TABLE IF NOT EXISTS t_outbound_request (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  applicant_id BIGINT NOT NULL COMMENT '申请人ID',
+  applicant_name VARCHAR(50) COMMENT '申请人姓名',
+  material_id BIGINT NOT NULL COMMENT '物资ID',
+  material_name VARCHAR(100) COMMENT '物资名称',
+  quantity INT NOT NULL COMMENT '申请数量',
+  supply_category VARCHAR(20) DEFAULT 'SOCIAL' COMMENT 'SOCIAL/CENTRALIZED',
+  department VARCHAR(50) COMMENT '领用部门',
+  purpose VARCHAR(200) COMMENT '用途',
+  recipient_staff_id BIGINT COMMENT '领用护工ID',
+  recipient_name VARCHAR(50) COMMENT '领用人姓名',
+  approval_status VARCHAR(20) DEFAULT 'PENDING' COMMENT 'PENDING/APPROVED/REJECTED',
+  approver_id BIGINT COMMENT '审批人ID',
+  approver_name VARCHAR(50) COMMENT '审批人姓名',
+  approve_time DATETIME COMMENT '审批时间',
+  approve_remark VARCHAR(500) COMMENT '审批备注',
+  inventory_out_id BIGINT COMMENT '审批通过后生成的出库记录ID',
+  remark VARCHAR(500),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 预算管理表 ==========
+CREATE TABLE IF NOT EXISTS t_budget (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  year INT NOT NULL COMMENT '年度',
+  month INT NOT NULL COMMENT '月度',
+  supply_category VARCHAR(20) NOT NULL COMMENT 'SOCIAL/CENTRALIZED',
+  budget_amount DECIMAL(12,2) DEFAULT 0 COMMENT '预算金额',
+  used_amount DECIMAL(12,2) DEFAULT 0 COMMENT '已使用金额',
+  remark VARCHAR(500),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_budget_year_month_cat ON t_budget(year, month, supply_category);
+
+-- ========== 银行账户表 ==========
+CREATE TABLE IF NOT EXISTS t_bank_account (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  account_name VARCHAR(100) NOT NULL COMMENT '账户名称',
+  account_type VARCHAR(20) DEFAULT 'BASIC' COMMENT 'BASIC基本户/GENERAL一般户',
+  bank_name VARCHAR(100) COMMENT '开户行',
+  account_number VARCHAR(100) COMMENT '账号',
+  initial_balance DECIMAL(12,2) DEFAULT 0 COMMENT '初始余额',
+  current_balance DECIMAL(12,2) DEFAULT 0 COMMENT '当前余额',
+  status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE/INACTIVE',
+  org_id BIGINT COMMENT '所属机构',
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 银行流水表 ==========
+CREATE TABLE IF NOT EXISTS t_bank_transaction (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  bank_account_id BIGINT NOT NULL COMMENT '银行账户ID',
+  transaction_type VARCHAR(20) NOT NULL COMMENT 'INCOME/EXPENSE',
+  amount DECIMAL(12,2) NOT NULL COMMENT '金额',
+  balance_after DECIMAL(12,2) COMMENT '交易后余额',
+  counterparty VARCHAR(100) COMMENT '对方',
+  biz_type VARCHAR(30) COMMENT '业务类型',
+  biz_id BIGINT COMMENT '关联业务ID',
+  receipt_no VARCHAR(50) COMMENT '流水号',
+  transaction_date DATE COMMENT '交易日期',
+  remark VARCHAR(500),
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 五保拨付表 ==========
+CREATE TABLE IF NOT EXISTS t_wubao_allocation (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  allocate_month VARCHAR(7) NOT NULL COMMENT '拨付月份YYYY-MM',
+  elder_count INT NOT NULL COMMENT '老人数量',
+  living_fee_per_person DECIMAL(10,2) DEFAULT 0 COMMENT '生活费人均',
+  care_fee_per_person DECIMAL(10,2) DEFAULT 0 COMMENT '护理费人均',
+  total_amount DECIMAL(12,2) NOT NULL COMMENT '拨付总额',
+  payment_record_id BIGINT COMMENT '关联缴费记录',
+  bank_transaction_id BIGINT COMMENT '关联银行流水',
+  remark VARCHAR(500),
+  org_id BIGINT COMMENT '所属机构',
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 库存批次追踪表 ==========
+CREATE TABLE IF NOT EXISTS t_inventory_batch (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  material_id BIGINT NOT NULL COMMENT '物资ID',
+  batch_no VARCHAR(50) NOT NULL COMMENT '批号',
+  supply_category VARCHAR(20) DEFAULT 'SOCIAL' COMMENT 'SOCIAL/CENTRALIZED',
+  quantity INT NOT NULL COMMENT '入库数量',
+  remaining_quantity INT NOT NULL COMMENT '剩余数量',
+  expiry_date DATE COMMENT '有效期',
+  in_date DATE NOT NULL COMMENT '入库日期',
+  inventory_in_id BIGINT COMMENT '关联入库记录',
+  supplier VARCHAR(100) COMMENT '供应商',
+  operator_id BIGINT COMMENT '操作人',
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========== 用药管理相关表 ==========
+
+-- t_medication_plan: 用药计划（多药品改造后：药品字段下沉到 t_medication_plan_item）
+CREATE TABLE IF NOT EXISTS t_medication_plan (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  elderly_id BIGINT NOT NULL COMMENT '老人ID',
+  drug_id BIGINT COMMENT '药品ID（已迁移到子表，保留冗余）',
+  drug_name VARCHAR(100) COMMENT '药品名称（已迁移到子表，保留冗余）',
+  dosage VARCHAR(50) COMMENT '剂量（已迁移到子表，保留冗余）',
+  dosage_unit VARCHAR(20) COMMENT '单位：mg/片/ml/粒（已迁移到子表，保留冗余）',
+  frequency_type VARCHAR(20) COMMENT 'MULTI_DAILY/N_DAYS/PRN/ONCE',
+  interval_days INT DEFAULT 1 COMMENT '间隔天数',
+  time_slots VARCHAR(50) NOT NULL COMMENT '服药时段JSON: ["MORNING","EVENING"]',
+  start_date DATE NOT NULL COMMENT '开始日期',
+  end_date DATE COMMENT '结束日期（null=长期）',
+  total_quantity DECIMAL(10,2) COMMENT '发药总量（已迁移到子表，保留冗余）',
+  dosage_per_time VARCHAR(50) COMMENT '每次用量数值（已迁移到子表，保留冗余）',
+  times_per_day INT DEFAULT 1 COMMENT '每天服用次数',
+  depletion_date DATE COMMENT '预计耗尽日期（已迁移到子表，保留冗余）',
+  instructions VARCHAR(500) COMMENT '服药说明',
+  prescriber_name VARCHAR(50) COMMENT '处方医生',
+  status VARCHAR(20) DEFAULT 'ACTIVE' COMMENT 'ACTIVE/PAUSED/COMPLETED/STOPPED',
+  operator_id BIGINT COMMENT '操作人',
+  remark VARCHAR(200),
+  org_id BIGINT,
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- t_medication_plan_item: 用药计划药品明细
+CREATE TABLE IF NOT EXISTS t_medication_plan_item (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  plan_id BIGINT NOT NULL COMMENT '关联用药计划ID',
+  drug_id BIGINT NOT NULL COMMENT '药品ID',
+  drug_name VARCHAR(100) NOT NULL COMMENT '药品名称（冗余）',
+  dosage VARCHAR(50) COMMENT '用量说明',
+  dosage_unit VARCHAR(20) COMMENT '单位：mg/片/ml/粒',
+  total_quantity DECIMAL(10,2) COMMENT '发药总量',
+  dosage_per_time VARCHAR(50) COMMENT '每次用量数值',
+  depletion_date DATE COMMENT '该药品预计耗尽日期',
+  org_id BIGINT,
+  deleted TINYINT DEFAULT 0,
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- t_medication_record: 用药执行记录
+CREATE TABLE IF NOT EXISTS t_medication_record (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  plan_id BIGINT COMMENT '关联用药计划',
+  elderly_id BIGINT NOT NULL COMMENT '老人ID',
+  drug_id BIGINT COMMENT '药品ID',
+  drug_name VARCHAR(100) COMMENT '药品名称（冗余）',
+  dosage VARCHAR(50) COMMENT '用量',
+  record_date DATE COMMENT '服药日期',
+  time_slot VARCHAR(20) COMMENT 'MORNING/AFTERNOON/EVENING/BEDTIME',
+  status VARCHAR(20) DEFAULT 'PENDING' COMMENT 'PENDING/DONE/SKIPPED/MISSED/REFUSED',
+  executor_id BIGINT COMMENT '执行护工ID',
+  executor_name VARCHAR(50) COMMENT '执行护工姓名',
+  executed_at DATETIME COMMENT '实际执行时间',
+  skip_reason VARCHAR(200) COMMENT '跳过/漏服/拒服原因',
   remark VARCHAR(200),
   deleted TINYINT DEFAULT 0,
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,

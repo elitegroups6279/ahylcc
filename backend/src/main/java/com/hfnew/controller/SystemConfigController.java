@@ -6,6 +6,7 @@ import com.hfnew.dto.system.ConfigVO;
 import com.hfnew.service.SystemConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -33,6 +34,7 @@ public class SystemConfigController {
     /**
      * 批量更新配置
      */
+    @PreAuthorize("hasAuthority('system:config')")
     @PutMapping
     public ResponseEntity<ApiResponse<Object>> batchUpdate(@RequestBody List<ConfigUpdateRequest> configs) {
         systemConfigService.batchUpdateConfigs(configs);

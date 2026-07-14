@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -24,6 +25,7 @@ public class PurchaseRequestController {
     private final PurchaseRequestService purchaseRequestService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('warehouse:purchase')")
     public ResponseEntity<ApiResponse<Page<PurchaseRequest>>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -64,6 +66,16 @@ public class PurchaseRequestController {
         String remark = body != null ? body.getOrDefault("remark", "") : "";
         purchaseRequestService.reject(id, getCurrentUserId(), remark);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    /**
+     * 获取已审批通过且验收合格的采购申请列表（供入库FROM_PURCHASE模式使用）
+     */
+    @GetMapping("/ready-for-inbound")
+    @PreAuthorize("hasAuthority('warehouse:in')")
+    public ResponseEntity<ApiResponse<List<PurchaseRequest>>> listReadyForInbound() {
+        return ResponseEntity.ok(ApiResponse.success(
+                purchaseRequestService.listReadyForInbound()));
     }
 
     private Long getCurrentUserId() {

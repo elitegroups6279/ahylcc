@@ -14,6 +14,7 @@ import com.hfnew.exception.BizException;
 import com.hfnew.mapper.BankAccountMapper;
 import com.hfnew.mapper.FeeAccountMapper;
 import com.hfnew.mapper.PaymentRecordMapper;
+import com.hfnew.util.BatchNameLoader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -21,11 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +38,7 @@ public class PaymentService {
     private final JdbcTemplate jdbcTemplate;
     private final SystemConfigService systemConfigService;
     private final BankAccountService bankAccountService;
+    private final NotificationService notificationService;
 
     public List<ElderlyOption> listElderlyOptions(String keyword) {
         String baseSql = "SELECT id, name, id_card, unique_no FROM t_elderly WHERE deleted = 0 AND (status = 'ACTIVE' OR status = 'ON_LEAVE')";
@@ -73,7 +74,7 @@ public class PaymentService {
 
         IPage<PaymentRecord> result = paymentRecordMapper.selectPage(pageReq, wrapper);
         List<PaymentRecord> records = result.getRecords();
-        Map<Long, String> nameMap = loadElderlyNames(records.stream().map(PaymentRecord::getElderlyId).collect(Collectors.toList()));
+        Map<Long, String> nameMap = loadElderlyNames(records.stream().map(PaymentRecord::getElderlyId).filter(id -> id != null).collect(Collectors.toSet()));
         Map<Long, BankAccount> bankAccountMap = loadBankAccounts(records.stream().map(PaymentRecord::getBankAccountId).collect(Collectors.toList()));
         List<PaymentVO> list = records.stream().map(r -> toVO(r, nameMap.get(r.getElderlyId()), bankAccountMap.get(r.getBankAccountId()))).collect(Collectors.toList());
         return new PageResult<>(result.getCurrent(), result.getSize(), result.getTotal(), list);
@@ -187,57 +188,12 @@ public class PaymentService {
 
     private Integer calcWarningStatus(Long elderlyId, BigDecimal balance) {
         int warningDays = parseInt(systemConfigService.getConfig("fee_warning_days"), 7);
-        BigDecimal shortTermDailyRate = parseBigDecimal(systemConfigService.getConfig("short_term_daily_rate"), new BigDecimal("180"));
-
-        // Check latest ELDERLY_FEE payment validity_end_date
-        java.time.LocalDate validityEndDate = jdbcTemplate.query(
-                "SELECT validity_end_date FROM t_payment_record WHERE elderly_id = ? AND income_type = 'ELDERLY_FEE' AND deleted = 0 ORDER BY create_time DESC LIMIT 1",
-                rs -> {
-                    if (rs.next()) {
-                        java.sql.Date d = rs.getDate("validity_end_date");
-                        return d != null ? d.toLocalDate() : null;
-                    }
-                    return null;
-                },
-                elderlyId
-        );
-
-        int remainingDays = 0;
-        if (validityEndDate != null) {
-            remainingDays = (int) java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), validityEndDate);
-        } else {
-            BigDecimal contractMonthlyFee = jdbcTemplate.queryForObject(
-                    "SELECT contract_monthly_fee FROM t_elderly WHERE id = ? AND deleted = 0",
-                    BigDecimal.class,
-                    elderlyId
-            );
-
-            YearMonth ym = YearMonth.now();
-            int daysOfMonth = ym.lengthOfMonth();
-            BigDecimal dailyRate = shortTermDailyRate;
-            if (contractMonthlyFee != null && contractMonthlyFee.compareTo(BigDecimal.ZERO) > 0 && daysOfMonth > 0) {
-                dailyRate = contractMonthlyFee.divide(new BigDecimal(daysOfMonth), 6, RoundingMode.HALF_UP);
-            }
-
-            if (dailyRate != null && dailyRate.compareTo(BigDecimal.ZERO) > 0 && balance != null) {
-                remainingDays = balance.divide(dailyRate, 0, RoundingMode.FLOOR).intValue();
-            }
-        }
+        int remainingDays = notificationService.calcEffectiveRemainingDays(elderlyId);
         return remainingDays < warningDays ? 1 : 0;
     }
 
-    private Map<Long, String> loadElderlyNames(List<Long> elderlyIds) {
-        Map<Long, String> map = new HashMap<>();
-        if (elderlyIds == null || elderlyIds.isEmpty()) return map;
-        List<Long> ids = elderlyIds.stream().distinct().filter(id -> id != null).collect(Collectors.toList());
-        if (ids.isEmpty()) return map;
-        String in = ids.stream().map(x -> "?").collect(Collectors.joining(","));
-        String sql = "SELECT id, name FROM t_elderly WHERE deleted = 0 AND id IN (" + in + ")";
-        Object[] args = ids.toArray();
-        jdbcTemplate.query(sql, rs -> {
-            map.put(rs.getLong("id"), rs.getString("name"));
-        }, args);
-        return map;
+    private Map<Long, String> loadElderlyNames(Set<Long> ids) {
+        return BatchNameLoader.loadNames(jdbcTemplate, "t_elderly", "id", "name", ids);
     }
 
     private PaymentVO toVO(PaymentRecord r, String elderlyName, BankAccount bankAccount) {

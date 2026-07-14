@@ -14,6 +14,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/outbound-request")
 @RequiredArgsConstructor
@@ -44,8 +46,9 @@ public class OutboundRequestController {
     @OpLog(module = "仓库管理", operation = "审批通过申领单")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable Long id,
-            @RequestParam(required = false) String remark
+            @RequestBody(required = false) Map<String, String> body
     ) {
+        String remark = body != null ? body.get("remark") : null;
         outboundRequestService.approve(id, getCurrentUserId(), remark);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
@@ -55,8 +58,9 @@ public class OutboundRequestController {
     @OpLog(module = "仓库管理", operation = "驳回申领单")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable Long id,
-            @RequestParam(required = false) String remark
+            @RequestBody(required = false) Map<String, String> body
     ) {
+        String remark = body != null ? body.get("remark") : null;
         outboundRequestService.reject(id, getCurrentUserId(), remark);
         return ResponseEntity.ok(ApiResponse.success(null));
     }

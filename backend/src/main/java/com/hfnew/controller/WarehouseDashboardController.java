@@ -105,17 +105,14 @@ public class WarehouseDashboardController {
         Set<Long> materialIds = outs.stream().map(InventoryOut::getMaterialId).filter(Objects::nonNull).collect(Collectors.toSet());
         Map<Long, BigDecimal> materialPrices = new HashMap<>();
         if (!materialIds.isEmpty()) {
-            // Get latest unit price from inventory-in for each material
-            for (Long matId : materialIds) {
-                LambdaQueryWrapper<InventoryIn> priceWrapper = new LambdaQueryWrapper<>();
-                priceWrapper.eq(InventoryIn::getMaterialId, matId)
-                            .isNotNull(InventoryIn::getUnitPrice)
-                            .orderByDesc(InventoryIn::getInDate)
-                            .last("LIMIT 1");
-                InventoryIn latest = inventoryInMapper.selectOne(priceWrapper);
-                if (latest != null && latest.getUnitPrice() != null) {
-                    materialPrices.put(matId, latest.getUnitPrice());
-                }
+            // Batch load latest unit prices (single query instead of N+1)
+            LambdaQueryWrapper<InventoryIn> priceWrapper = new LambdaQueryWrapper<>();
+            priceWrapper.in(InventoryIn::getMaterialId, materialIds)
+                        .isNotNull(InventoryIn::getUnitPrice)
+                        .orderByDesc(InventoryIn::getInDate);
+            List<InventoryIn> priceRecords = inventoryInMapper.selectList(priceWrapper);
+            for (InventoryIn record : priceRecords) {
+                materialPrices.putIfAbsent(record.getMaterialId(), record.getUnitPrice());
             }
         }
 
@@ -208,16 +205,14 @@ public class WarehouseDashboardController {
         Set<Long> materialIds = outs.stream().map(InventoryOut::getMaterialId).filter(Objects::nonNull).collect(Collectors.toSet());
         Map<Long, BigDecimal> materialPrices = new HashMap<>();
         if (!materialIds.isEmpty()) {
-            for (Long matId : materialIds) {
-                LambdaQueryWrapper<InventoryIn> priceWrapper = new LambdaQueryWrapper<>();
-                priceWrapper.eq(InventoryIn::getMaterialId, matId)
-                            .isNotNull(InventoryIn::getUnitPrice)
-                            .orderByDesc(InventoryIn::getInDate)
-                            .last("LIMIT 1");
-                InventoryIn latest = inventoryInMapper.selectOne(priceWrapper);
-                if (latest != null && latest.getUnitPrice() != null) {
-                    materialPrices.put(matId, latest.getUnitPrice());
-                }
+            // Batch load latest unit prices (single query instead of N+1)
+            LambdaQueryWrapper<InventoryIn> priceWrapper = new LambdaQueryWrapper<>();
+            priceWrapper.in(InventoryIn::getMaterialId, materialIds)
+                        .isNotNull(InventoryIn::getUnitPrice)
+                        .orderByDesc(InventoryIn::getInDate);
+            List<InventoryIn> priceRecords = inventoryInMapper.selectList(priceWrapper);
+            for (InventoryIn record : priceRecords) {
+                materialPrices.putIfAbsent(record.getMaterialId(), record.getUnitPrice());
             }
         }
 

@@ -1,16 +1,19 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: hfnew-backend
   profiles:
     active: mysql
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: auto
@@ -22,18 +25,18 @@ mybatis-plus:
 
 app:
   jwt:
-    # HS256 key length需要 >= 256bit（至少32字节），P0先用足够长的占位字符串避免 WeakKeyException
-    access-secret: "CHANGE_ME_ACCESS_SECRET_CHANGE_ME_ACCESS_SECRET"
-    refresh-secret: "CHANGE_ME_REFRESH_SECRET_CHANGE_ME_REFRESH_SECRET"
-    # P0：Access 通常较短，便于验证 refresh；可按需调整
+    # 生产环境通过环境变量注入，禁止硬编码
+    access-secret: ${APP_JWT_ACCESS_SECRET}
+    refresh-secret: ${APP_JWT_REFRESH_SECRET}
     access-ttl-seconds: 900
     refresh-ttl-seconds: 1209600
     issuer: "hfnew-backend"
 
   security:
-    allowed-origins: "http://localhost:5173,http://www.ahylcc.cn,https://www.ahylcc.cn,http://ahylcc.cn,https://ahylcc.cn,http://43.138.7.82,https://43.138.7.82"
+    allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:5173}
 
 ---
+# MySQL 生产 profile
 spring:
   config:
     activate:
@@ -45,11 +48,14 @@ spring:
     password: ${MYSQL_PASSWORD:}
   sql:
     init:
-      mode: always
-      schema-locations: classpath:schema.sql
-      data-locations: classpath:data-mysql.sql
+      mode: never
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
 
 ---
+# H2 开发 profile
 spring:
   config:
     activate:
@@ -68,3 +74,7 @@ spring:
       mode: always
       schema-locations: classpath:schema.sql
       data-locations: classpath:data-h2.sql
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

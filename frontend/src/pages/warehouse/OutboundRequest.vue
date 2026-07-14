@@ -183,6 +183,9 @@ import { ElMessage } from 'element-plus'
 import { api } from '../../api/client'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { useAuthStore } from '../../store/auth'
+import { useFormat } from '@/composables/useFormat'
+
+const { supplyCategoryLabel } = useFormat()
 
 const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.permissions.includes('*'))
@@ -235,12 +238,6 @@ const currentRow = ref(null)
 
 // Detail dialog
 const detailDialogVisible = ref(false)
-
-function supplyCategoryLabel(cat) {
-  if (cat === 'CENTRALIZED') return '集中供养物资'
-  if (cat === 'SOCIAL') return '社会化物资'
-  return cat || '-'
-}
 
 function formatTime(t) {
   if (!t) return '-'
@@ -381,7 +378,7 @@ async function confirmApprove() {
   approving.value = true
   try {
     const url = `/api/outbound-request/${currentRow.value.id}/${approveAction.value}`
-    const resp = await api.post(url, null, { params: { remark: approveRemark.value || undefined } })
+    const resp = await api.post(url, { remark: approveRemark.value || undefined })
     const body = resp.data
     if (body.code !== 200) throw new Error(body.msg || '操作失败')
     ElMessage.success(approveAction.value === 'approve' ? '审批通过成功' : '已拒绝该申领单')

@@ -26,6 +26,7 @@ import com.hfnew.mapper.VoucherHeaderMapper;
 import com.hfnew.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -59,11 +60,13 @@ public class DashboardController {
     private final DrugBatchMapper drugBatchMapper;
 
     @GetMapping("/fee-warnings")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<FeeWarningItem>>> feeWarnings() {
         return ResponseEntity.ok(ApiResponse.success(notificationService.listFeeWarnings()));
     }
 
     @GetMapping("/stats")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
         Map<String, Object> stats = new HashMap<>();
 
@@ -123,6 +126,7 @@ public class DashboardController {
     }
 
     @GetMapping("/pending-summary")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> pendingSummary() {
         Map<String, Object> result = new HashMap<>();
 
@@ -156,6 +160,7 @@ public class DashboardController {
     }
 
     @GetMapping("/calendar-events")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CalendarDayEventsDTO>>> calendarEvents(
             @RequestParam int year,
             @RequestParam int month) {
@@ -244,6 +249,7 @@ public class DashboardController {
     }
 
     @GetMapping("/charts")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCharts() {
         Map<String, Object> charts = new HashMap<>();
 

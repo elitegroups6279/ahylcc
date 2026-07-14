@@ -1,266 +1,343 @@
 <template>
-  <div class="cashflow-page">
-    <PageHeader title="收入管理">
+  <div class="fin-page cashflow-page">
+    <PageHeader title="收支管理" subtitle="收入登记 · 支出登记 · 月度汇总">
       <template #actions>
-        <el-button-group>
-          <el-button type="success" :plain="activeView !== 'income'" @click="switchView('income')">
+        <div class="fin-switcher">
+          <button
+            class="fin-switcher-btn"
+            :class="{ active: activeView === 'income' }"
+            @click="switchView('income')"
+          >
+            <el-icon><Top /></el-icon>
             收入管理
-          </el-button>
-          <el-button type="danger" :plain="activeView !== 'expense'" @click="switchView('expense')">
+          </button>
+          <button
+            class="fin-switcher-btn"
+            :class="{ active: activeView === 'expense' }"
+            @click="switchView('expense')"
+          >
+            <el-icon><Bottom /></el-icon>
             支出管理
-          </el-button>
-        </el-button-group>
+          </button>
+        </div>
       </template>
     </PageHeader>
 
     <!-- 顶部统计卡片 -->
-    <el-row :gutter="16" style="margin-bottom: 20px">
-      <el-col :span="8">
-        <el-card shadow="hover" class="stat-card income-card">
-          <div class="stat-label">本月收入</div>
-          <div class="stat-value" style="color: #67C23A">¥ {{ formatMoney(summary.totalIncome) }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover" class="stat-card expense-card">
-          <div class="stat-label">本月支出</div>
-          <div class="stat-value" style="color: #F56C6C">¥ {{ formatMoney(summary.totalExpense) }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover" class="stat-card net-card">
-          <div class="stat-label">本月净额</div>
-          <div class="stat-value" :style="{ color: summary.netAmount >= 0 ? '#409EFF' : '#F56C6C' }">
-            ¥ {{ formatMoney(summary.netAmount) }}
+    <div class="fin-stat-row">
+      <div class="fin-stat-card income">
+        <div class="fin-stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5" />
+            <polyline points="5 12 12 5 19 12" />
+          </svg>
+        </div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">本月收入</div>
+          <div class="fin-stat-value">¥ {{ formatMoney(summary.totalIncome) }}</div>
+        </div>
+      </div>
+
+      <div class="fin-stat-card expense">
+        <div class="fin-stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <polyline points="19 12 12 19 5 12" />
+          </svg>
+        </div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">本月支出</div>
+          <div class="fin-stat-value">¥ {{ formatMoney(summary.totalExpense) }}</div>
+        </div>
+      </div>
+
+      <div class="fin-stat-card net">
+        <div class="fin-stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2" />
+            <line x1="2" y1="10" x2="22" y2="10" />
+          </svg>
+        </div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">本月净额</div>
+          <div class="fin-stat-value">
+            {{ summary.netAmount >= 0 ? '+' : '' }}¥ {{ formatMoney(summary.netAmount) }}
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </div>
+    </div>
 
     <!-- 收入管理视图 -->
-    <div v-if="activeView === 'income'">
-      <!-- 筛选栏 -->
-      <el-row style="margin-bottom: 16px" :gutter="12">
-        <el-col :span="8">
-          <el-select v-model="incomeFilter.elderlyId" placeholder="选择老人" clearable filterable>
-            <el-option v-for="e in elderlyOptions" :key="e.id" :label="`${e.name} (${e.uniqueNo})`" :value="e.id" />
-          </el-select>
-        </el-col>
-        <el-col :span="16" style="text-align: right">
-          <el-button @click="loadIncome">查询</el-button>
-          <el-button type="success" @click="showIncomeDialog = true">登记收入</el-button>
-        </el-col>
-      </el-row>
+    <Transition name="view-fade" mode="out-in">
+      <div v-if="activeView === 'income'" key="income" class="view-section">
+        <!-- 筛选栏 -->
+        <div class="fin-filter-bar">
+          <div class="fin-filter-left">
+            <el-select v-model="incomeFilter.elderlyId" placeholder="选择老人" clearable filterable style="width: 240px">
+              <el-option v-for="e in elderlyOptions" :key="e.id" :label="`${e.name} (${e.uniqueNo})`" :value="e.id" />
+            </el-select>
+          </div>
+          <div class="fin-filter-right">
+            <el-button @click="loadIncome">
+              <el-icon class="btn-icon"><Refresh /></el-icon> 查询
+            </el-button>
+            <el-button type="primary" @click="showIncomeDialog = true">
+              <el-icon class="btn-icon"><Plus /></el-icon> 登记收入
+            </el-button>
+          </div>
+        </div>
 
-      <!-- 收入列表表格 -->
-      <el-table :data="incomeList" border stripe v-loading="incomeLoading">
-        <template #empty>
-          <el-empty description="暂无数据" :image-size="80" />
-        </template>
-        <el-table-column label="收入类型" width="110">
-          <template #default="{ row }">
-            {{ incomeTypeMap[row.incomeType] || row.incomeType || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="老人姓名" width="120">
-          <template #default="{ row }">
-            {{ row.elderlyName || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="金额" width="120">
-          <template #default="{ row }">
-            <span style="color: #67C23A; font-weight: bold">+{{ formatMoney(row.amount) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="paymentMethod" label="方式" width="100">
-          <template #default="{ row }">
-            {{ paymentMethodMap[row.paymentMethod] || row.paymentMethod }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="sourceType" label="来源" width="100">
-          <template #default="{ row }">
-            {{ sourceTypeMap[row.sourceType] || row.sourceType }}
-          </template>
-        </el-table-column>
-        <el-table-column label="入账账户" width="120">
-          <template #default="{ row }">
-            <el-tag v-if="row.bankAccountType === 'BASIC'" type="primary">基本户</el-tag>
-            <el-tag v-else-if="row.bankAccountType === 'GENERAL'" type="success">一般户</el-tag>
-            <el-tag v-else type="info">未关联</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="paymentDate" label="缴费时间" width="120" />
-        <el-table-column label="费用有效期" width="180">
-          <template #default="{ row }">
-            <span v-if="row.validityStartDate && row.validityEndDate">
-              {{ row.validityStartDate }} ~ {{ row.validityEndDate }}
-            </span>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="记录时间" width="180" />
-        <el-table-column prop="remark" label="备注" />
-        <el-table-column v-if="isAdmin" label="操作" width="80">
-          <template #default="{ row }">
-            <el-popconfirm title="确定删除该收入记录?" @confirm="deleteIncome(row.id)">
-              <template #reference>
-                <el-button type="danger" link size="small">删除</el-button>
+        <!-- 收入列表 -->
+        <div class="fin-table-card">
+          <div class="fin-table-card-header">
+            <div class="fin-table-card-header-left">
+              <span class="fin-table-card-title">收入明细</span>
+              <span class="fin-table-card-count">共 {{ incomeTotal }} 条</span>
+            </div>
+          </div>
+          <el-table :data="incomeList" stripe v-loading="incomeLoading" class="fin-table">
+            <template #empty>
+              <el-empty description="暂无收入记录" :image-size="80" />
+            </template>
+            <el-table-column label="收入类型" width="110">
+              <template #default="{ row }">
+                <el-tag effect="light" round size="small" class="fin-type-tag">{{ incomeTypeMap[row.incomeType] || row.incomeType || '-' }}</el-tag>
               </template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <!-- 分页 -->
-      <div class="pager">
-        <el-pagination
-          background
-          layout="total, prev, pager, next, sizes"
-          :total="incomeTotal"
-          :current-page="incomePage"
-          :page-size="incomePageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          @update:current-page="(p) => { incomePage = p; loadIncome() }"
-          @update:page-size="(s) => { incomePageSize = s; incomePage = 1; loadIncome() }"
-        />
-      </div>
-    </div>
-
-    <!-- 支出管理视图 -->
-    <div v-if="activeView === 'expense'">
-      <!-- 筛选栏 -->
-      <el-row style="margin-bottom: 16px" :gutter="12">
-        <el-col :span="6">
-          <el-select v-model="expenseFilter.expenseType" placeholder="支出类型" clearable>
-            <el-option v-for="t in expenseTypes" :key="t.value" :label="t.label" :value="t.value" />
-          </el-select>
-        </el-col>
-        <el-col :span="8">
-          <el-date-picker
-            v-model="expenseFilter.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
-        </el-col>
-        <el-col :span="10" style="text-align: right">
-          <el-button @click="loadExpense">查询</el-button>
-          <el-button type="danger" @click="showExpenseDialog = true">登记支出</el-button>
-        </el-col>
-      </el-row>
-
-      <!-- 支出列表表格 -->
-      <el-table :data="expenseList" border stripe v-loading="expenseLoading">
-        <template #empty>
-          <el-empty description="暂无数据" :image-size="80" />
-        </template>
-        <el-table-column label="支出类型" width="120">
-          <template #default="{ row }">
-            {{ expenseTypeMap[row.expenseType] || row.expenseType }}
-          </template>
-        </el-table-column>
-        <el-table-column label="金额" width="120">
-          <template #default="{ row }">
-            <span style="color: #F56C6C; font-weight: bold">-{{ formatMoney(row.amount) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="payee" label="收款方" width="140" />
-        <el-table-column prop="expenseDate" label="日期" width="120" />
-        <el-table-column prop="description" label="说明" />
-        <el-table-column prop="operatorName" label="操作员" width="100" />
-        <el-table-column v-if="isAdmin" label="操作" width="80">
-          <template #default="{ row }">
-            <el-popconfirm title="确定删除?" @confirm="deleteExpense(row.id)">
-              <template #reference>
-                <el-button type="danger" link size="small">删除</el-button>
+            </el-table-column>
+            <el-table-column label="老人姓名" width="120">
+              <template #default="{ row }">
+                {{ row.elderlyName || '-' }}
               </template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
+            </el-table-column>
+            <el-table-column label="金额" width="140">
+              <template #default="{ row }">
+                <span class="fin-amount income">+{{ formatMoney(row.amount) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="paymentMethod" label="方式" width="90">
+              <template #default="{ row }">
+                {{ paymentMethodMap[row.paymentMethod] || row.paymentMethod }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="sourceType" label="来源" width="90">
+              <template #default="{ row }">
+                {{ sourceTypeMap[row.sourceType] || row.sourceType }}
+              </template>
+            </el-table-column>
+            <el-table-column label="入账账户" width="110">
+              <template #default="{ row }">
+                <el-tag v-if="row.bankAccountType === 'BASIC'" type="primary" effect="plain" size="small">基本户</el-tag>
+                <el-tag v-else-if="row.bankAccountType === 'GENERAL'" type="success" effect="plain" size="small">一般户</el-tag>
+                <span v-else class="text-muted">未关联</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="paymentDate" label="缴费时间" width="120" />
+            <el-table-column label="费用有效期" width="180">
+              <template #default="{ row }">
+                <span v-if="row.validityStartDate && row.validityEndDate" class="text-secondary">
+                  {{ row.validityStartDate }} ~ {{ row.validityEndDate }}
+                </span>
+                <span v-else class="text-muted">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="remark" label="备注" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span class="text-secondary">{{ row.remark || '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="isAdmin" label="操作" width="80" fixed="right">
+              <template #default="{ row }">
+                <el-popconfirm title="确定删除该收入记录?" @confirm="deleteIncome(row.id)">
+                  <template #reference>
+                    <el-button type="danger" link size="small">删除</el-button>
+                  </template>
+                </el-popconfirm>
+              </template>
+            </el-table-column>
+          </el-table>
 
-      <!-- 分页 -->
-      <div class="pager">
-        <el-pagination
-          background
-          layout="total, prev, pager, next, sizes"
-          :total="expenseTotal"
-          :current-page="expensePage"
-          :page-size="expensePageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          @update:current-page="(p) => { expensePage = p; loadExpense() }"
-          @update:page-size="(s) => { expensePageSize = s; expensePage = 1; loadExpense() }"
-        />
+          <div class="fin-pager">
+            <el-pagination
+              background
+              layout="total, prev, pager, next, sizes"
+              :total="incomeTotal"
+              :current-page="incomePage"
+              :page-size="incomePageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              @update:current-page="(p) => { incomePage = p; loadIncome() }"
+              @update:page-size="(s) => { incomePageSize = s; incomePage = 1; loadIncome() }"
+            />
+          </div>
+        </div>
       </div>
-    </div>
+
+      <!-- 支出管理视图 -->
+      <div v-else key="expense" class="view-section">
+        <!-- 筛选栏 -->
+        <div class="fin-filter-bar">
+          <div class="fin-filter-left">
+            <el-select v-model="expenseFilter.expenseType" placeholder="支出类型" clearable style="width: 160px">
+              <el-option v-for="t in expenseTypes" :key="t.value" :label="t.label" :value="t.value" />
+            </el-select>
+            <el-date-picker
+              v-model="expenseFilter.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              style="width: 260px"
+            />
+          </div>
+          <div class="fin-filter-right">
+            <el-button @click="loadExpense">
+              <el-icon class="btn-icon"><Refresh /></el-icon> 查询
+            </el-button>
+            <el-button type="primary" @click="showExpenseDialog = true">
+              <el-icon class="btn-icon"><Plus /></el-icon> 登记支出
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 支出列表 -->
+        <div class="fin-table-card">
+          <div class="fin-table-card-header">
+            <div class="fin-table-card-header-left">
+              <span class="fin-table-card-title">支出明细</span>
+              <span class="fin-table-card-count">共 {{ expenseTotal }} 条</span>
+            </div>
+          </div>
+          <el-table :data="expenseList" stripe v-loading="expenseLoading" class="fin-table">
+            <template #empty>
+              <el-empty description="暂无支出记录" :image-size="80" />
+            </template>
+            <el-table-column label="支出类型" width="120">
+              <template #default="{ row }">
+                <el-tag effect="light" round size="small" type="warning" class="fin-type-tag">{{ expenseTypeMap[row.expenseType] || row.expenseType }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="金额" width="140">
+              <template #default="{ row }">
+                <span class="fin-amount expense">-{{ formatMoney(row.amount) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="payee" label="收款方" width="160" show-overflow-tooltip />
+            <el-table-column prop="expenseDate" label="日期" width="120" />
+            <el-table-column label="说明" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span class="text-secondary">{{ row.description || '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="operatorName" label="操作员" width="100" />
+            <el-table-column v-if="isAdmin" label="操作" width="80" fixed="right">
+              <template #default="{ row }">
+                <el-popconfirm title="确定删除?" @confirm="deleteExpense(row.id)">
+                  <template #reference>
+                    <el-button type="danger" link size="small">删除</el-button>
+                  </template>
+                </el-popconfirm>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="fin-pager">
+            <el-pagination
+              background
+              layout="total, prev, pager, next, sizes"
+              :total="expenseTotal"
+              :current-page="expensePage"
+              :page-size="expensePageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              @update:current-page="(p) => { expensePage = p; loadExpense() }"
+              @update:page-size="(s) => { expensePageSize = s; expensePage = 1; loadExpense() }"
+            />
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- 收入弹窗 -->
-    <el-dialog v-model="showIncomeDialog" title="登记收入" width="560px">
+    <el-dialog v-model="showIncomeDialog" title="登记收入" width="580px" class="fin-dialog">
       <el-form ref="incomeFormRef" :model="incomeForm" :rules="incomeRules" label-width="90px">
-        <el-form-item label="收入类型" prop="incomeType">
-          <el-select v-model="incomeForm.incomeType" placeholder="选择收入类型" style="width: 220px" @change="onIncomeTypeChange">
-            <el-option v-for="t in incomeTypeOptions" :key="t.value" :label="t.label" :value="t.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="incomeForm.incomeType === 'ELDERLY_FEE'" label="老人" prop="elderlyId">
-          <el-select
-            v-model="incomeForm.elderlyId"
-            filterable
-            clearable
-            placeholder="选择老人"
-            style="width: 100%"
-          >
-            <el-option v-for="e in elderlyOptions" :key="e.id" :label="`${e.name} (${e.uniqueNo})`" :value="e.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="selectedElderly" label="身份证号">
-          <el-input :model-value="selectedElderly.idCard" disabled />
-        </el-form-item>
-        <el-form-item v-if="incomeForm.incomeType !== 'ELDERLY_FEE'" label="收入说明" prop="description">
-          <el-input v-model="incomeForm.description" placeholder="请输入收入说明" />
-        </el-form-item>
-        <el-form-item label="金额" prop="amount">
-          <el-input-number v-model="incomeForm.amount" :min="0.01" :precision="2" :step="10" style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="缴费时间" prop="paymentDate" :rules="[{ required: true, message: '请选择缴费时间' }]">
-          <el-date-picker v-model="incomeForm.paymentDate" type="date" placeholder="选择缴费时间" style="width: 100%" value-format="YYYY-MM-DD" />
-        </el-form-item>
-        <el-form-item v-if="incomeForm.incomeType === 'ELDERLY_FEE'" label="费用有效期" prop="validityRange">
-          <el-date-picker
-            v-model="incomeForm.validityRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="方式" prop="paymentMethod">
-          <el-select v-model="incomeForm.paymentMethod" placeholder="选择方式" style="width: 220px">
-            <el-option label="现金" value="CASH" />
-            <el-option label="转账" value="TRANSFER" />
-            <el-option label="POS刷卡" value="POS" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="来源" prop="sourceType">
-          <el-select v-model="incomeForm.sourceType" placeholder="选择来源" style="width: 220px">
-            <el-option label="长护险" value="LONG_CARE" />
-            <el-option label="消费券" value="COUPON" />
-            <el-option label="其他" value="OTHER" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="入账账户" prop="bankAccountId">
-          <el-select v-model="incomeForm.bankAccountId" placeholder="选择入账账户" style="width: 220px">
-            <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="incomeForm.remark" type="textarea" :rows="3" placeholder="可选" />
-        </el-form-item>
+        <div class="fin-form-section">
+          <el-form-item label="收入类型" prop="incomeType">
+            <el-select v-model="incomeForm.incomeType" placeholder="选择收入类型" style="width: 100%" @change="onIncomeTypeChange">
+              <el-option v-for="t in incomeTypeOptions" :key="t.value" :label="t.label" :value="t.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="incomeForm.incomeType === 'ELDERLY_FEE'" label="老人" prop="elderlyId">
+            <el-select
+              v-model="incomeForm.elderlyId"
+              filterable
+              clearable
+              placeholder="选择老人"
+              style="width: 100%"
+            >
+              <el-option v-for="e in elderlyOptions" :key="e.id" :label="`${e.name} (${e.uniqueNo})`" :value="e.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="selectedElderly" label="身份证号">
+            <el-input :model-value="selectedElderly.idCard" disabled />
+          </el-form-item>
+          <el-form-item v-if="incomeForm.incomeType !== 'ELDERLY_FEE'" label="收入说明" prop="description">
+            <el-input v-model="incomeForm.description" placeholder="请输入收入说明" />
+          </el-form-item>
+        </div>
+        <div class="fin-form-section">
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="金额" prop="amount">
+                <el-input-number v-model="incomeForm.amount" :min="0.01" :precision="2" :step="10" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="缴费时间" prop="paymentDate" :rules="[{ required: true, message: '请选择缴费时间' }]">
+                <el-date-picker v-model="incomeForm.paymentDate" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+        <div class="fin-form-section">
+          <el-form-item v-if="incomeForm.incomeType === 'ELDERLY_FEE'" label="费用有效期" prop="validityRange">
+            <el-date-picker
+              v-model="incomeForm.validityRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="方式" prop="paymentMethod">
+                <el-select v-model="incomeForm.paymentMethod" placeholder="选择方式" style="width: 100%">
+                  <el-option label="现金" value="CASH" />
+                  <el-option label="转账" value="TRANSFER" />
+                  <el-option label="POS刷卡" value="POS" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="来源" prop="sourceType">
+                <el-select v-model="incomeForm.sourceType" placeholder="选择来源" style="width: 100%">
+                  <el-option label="长护险" value="LONG_CARE" />
+                  <el-option label="消费券" value="COUPON" />
+                  <el-option label="其他" value="OTHER" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="入账账户" prop="bankAccountId">
+            <el-select v-model="incomeForm.bankAccountId" placeholder="选择入账账户" style="width: 100%">
+              <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="备注" prop="remark">
+            <el-input v-model="incomeForm.remark" type="textarea" :rows="2" placeholder="可选" />
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="showIncomeDialog = false">取消</el-button>
@@ -269,45 +346,57 @@
     </el-dialog>
 
     <!-- 支出弹窗 -->
-    <el-dialog v-model="showExpenseDialog" title="登记支出" width="560px">
+    <el-dialog v-model="showExpenseDialog" title="登记支出" width="580px" class="fin-dialog">
       <el-form ref="expenseFormRef" :model="expenseForm" :rules="expenseRules" label-width="90px">
-        <el-form-item label="支出类型" prop="expenseType">
-          <el-select v-model="expenseForm.expenseType" placeholder="选择支出类型" style="width: 220px">
-            <el-option v-for="t in expenseTypes" :key="t.value" :label="t.label" :value="t.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="供应类别" prop="supplyCategory">
-          <el-select v-model="expenseForm.supplyCategory" placeholder="请选择供应类别" clearable>
-            <el-option label="社会化" value="SOCIAL" />
-            <el-option label="集中供养" value="CENTRALIZED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="供应类别" prop="supplyCategory">
-          <el-select v-model="expenseForm.supplyCategory" placeholder="请选择供应类别" clearable>
-            <el-option label="社会化" value="SOCIAL" />
-            <el-option label="集中供养" value="CENTRALIZED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="金额" prop="amount">
-          <el-input-number v-model="expenseForm.amount" :min="0.01" :precision="2" :step="10" style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="收款方" prop="payee">
-          <el-input v-model="expenseForm.payee" placeholder="请输入收款方" />
-        </el-form-item>
-        <el-form-item label="支出日期" prop="expenseDate">
-          <el-date-picker v-model="expenseForm.expenseDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="出账账户" prop="bankAccountId">
-          <el-select v-model="expenseForm.bankAccountId" placeholder="选择出账账户" style="width: 220px">
-            <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="说明" prop="description">
-          <el-input v-model="expenseForm.description" type="textarea" :rows="2" placeholder="可选" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="expenseForm.remark" placeholder="可选" />
-        </el-form-item>
+        <div class="fin-form-section">
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="支出类型" prop="expenseType">
+                <el-select v-model="expenseForm.expenseType" placeholder="选择支出类型" style="width: 100%">
+                  <el-option v-for="t in expenseTypes" :key="t.value" :label="t.label" :value="t.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="供应类别" prop="supplyCategory">
+                <el-select v-model="expenseForm.supplyCategory" placeholder="请选择" clearable style="width: 100%">
+                  <el-option label="社会化" value="SOCIAL" />
+                  <el-option label="集中供养" value="CENTRALIZED" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+        <div class="fin-form-section">
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="金额" prop="amount">
+                <el-input-number v-model="expenseForm.amount" :min="0.01" :precision="2" :step="10" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="支出日期" prop="expenseDate">
+                <el-date-picker v-model="expenseForm.expenseDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="收款方" prop="payee">
+            <el-input v-model="expenseForm.payee" placeholder="请输入收款方" />
+          </el-form-item>
+          <el-form-item label="出账账户" prop="bankAccountId">
+            <el-select v-model="expenseForm.bankAccountId" placeholder="选择出账账户" style="width: 100%">
+              <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
+            </el-select>
+          </el-form-item>
+        </div>
+        <div class="fin-form-section">
+          <el-form-item label="说明" prop="description">
+            <el-input v-model="expenseForm.description" type="textarea" :rows="2" placeholder="可选" />
+          </el-form-item>
+          <el-form-item label="备注" prop="remark">
+            <el-input v-model="expenseForm.remark" placeholder="可选" />
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="showExpenseDialog = false">取消</el-button>
@@ -320,6 +409,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Top, Bottom, Refresh, Plus } from '@element-plus/icons-vue'
 import { api as client } from '../../api/client'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { useAuthStore } from '../../store/auth'
@@ -549,7 +639,7 @@ function onIncomeTypeChange(val) {
   } else {
     incomeForm.description = ''
   }
-  // 自动路由：SUBSIDY → 一般户，其他 → 基本户
+  // 自动路由：SUBSIDY -> 一般户，其他 -> 基本户
   if (val === 'SUBSIDY') {
     const general = bankAccounts.value.find(a => a.accountType === 'GENERAL')
     if (general) incomeForm.bankAccountId = general.id
@@ -693,24 +783,30 @@ onMounted(() => {
   padding: 16px;
 }
 
-.stat-card {
-  text-align: center;
+.btn-icon {
+  margin-right: 4px;
 }
 
-.stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-bottom: 8px;
+.text-secondary {
+  color: var(--color-text-secondary, #6B7280);
 }
 
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
+.text-muted {
+  color: var(--color-text-disabled, #9CA3AF);
 }
 
-.pager {
-  margin-top: 14px;
-  display: flex;
-  justify-content: flex-end;
+.view-fade-enter-active,
+.view-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.view-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.view-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>

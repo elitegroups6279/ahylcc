@@ -7,6 +7,7 @@ import com.hfnew.common.PageResult;
 import com.hfnew.dto.staff.AssignedElderlyVO;
 import com.hfnew.dto.staff.StaffCreateRequest;
 import com.hfnew.dto.staff.StaffOption;
+import com.hfnew.dto.staff.StaffStatsDTO;
 import com.hfnew.dto.staff.StaffUpdateRequest;
 import com.hfnew.dto.staff.StaffVO;
 import com.hfnew.entity.Staff;
@@ -56,6 +57,36 @@ public class StaffService {
         Map<Long, Integer> countMap = loadActiveElderlyCount(result.getRecords().stream().map(Staff::getId).collect(Collectors.toList()));
         List<StaffVO> list = result.getRecords().stream().map(s -> toVO(s, countMap.getOrDefault(s.getId(), 0))).collect(Collectors.toList());
         return new PageResult<>(result.getCurrent(), result.getSize(), result.getTotal(), list);
+    }
+
+    /**
+     * 获取护工统计概览（全局数据，不受分页和状态筛选影响）
+     */
+    public StaffStatsDTO getStats() {
+        long total = staffMapper.selectCount(
+                new LambdaQueryWrapper<Staff>().eq(Staff::getPositionType, "CAREGIVER"));
+
+        long activeCount = staffMapper.selectCount(
+                new LambdaQueryWrapper<Staff>()
+                        .eq(Staff::getPositionType, "CAREGIVER")
+                        .eq(Staff::getStatus, "ACTIVE"));
+
+        long internCount = staffMapper.selectCount(
+                new LambdaQueryWrapper<Staff>()
+                        .eq(Staff::getPositionType, "CAREGIVER")
+                        .eq(Staff::getProbationStatus, "INTERN"));
+
+        long certCount = staffMapper.selectCount(
+                new LambdaQueryWrapper<Staff>()
+                        .eq(Staff::getPositionType, "CAREGIVER")
+                        .eq(Staff::getHasCaregiverCert, 1));
+
+        return StaffStatsDTO.builder()
+                .total(total)
+                .activeCount(activeCount)
+                .internCount(internCount)
+                .certCount(certCount)
+                .build();
     }
 
     public List<StaffOption> options(String keyword, String positionType) {

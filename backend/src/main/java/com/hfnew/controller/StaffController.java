@@ -6,6 +6,7 @@ import com.hfnew.config.OpLog;
 import com.hfnew.dto.staff.AssignedElderlyVO;
 import com.hfnew.dto.staff.StaffCreateRequest;
 import com.hfnew.dto.staff.StaffOption;
+import com.hfnew.dto.staff.StaffStatsDTO;
 import com.hfnew.dto.staff.StaffUpdateRequest;
 import com.hfnew.dto.staff.StaffVO;
 import com.hfnew.service.StaffService;
@@ -31,6 +32,14 @@ public class StaffController {
             @RequestParam(required = false) String positionType
     ) {
         return ResponseEntity.ok(ApiResponse.success(staffService.list(page, pageSize, keyword, status, positionType)));
+    }
+
+    /**
+     * 护工统计概览 — 返回全局统计数据，不受分页和状态筛选影响
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<StaffStatsDTO>> stats() {
+        return ResponseEntity.ok(ApiResponse.success(staffService.getStats()));
     }
 
     @GetMapping("/options")

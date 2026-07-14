@@ -7,6 +7,7 @@ import com.hfnew.service.OperationLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ public class OperationLogController {
     /**
      * 分页查询日志
      */
+    @PreAuthorize("hasAuthority('system:logs')")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResult<OperationLogVO>>> list(
             @RequestParam(defaultValue = "1") int page,

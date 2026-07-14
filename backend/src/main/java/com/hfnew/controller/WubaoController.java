@@ -10,6 +10,7 @@ import com.hfnew.service.WubaoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +38,7 @@ public class WubaoController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    @PreAuthorize("hasAuthority('finance:wubao-allocate')")
     @GetMapping("/monthly-summary")
     public ResponseEntity<ApiResponse<WubaoMonthlySummaryVO>> getMonthlySummary(
             @RequestParam String month) {

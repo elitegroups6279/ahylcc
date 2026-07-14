@@ -1,15 +1,63 @@
 <template>
-  <div class="page">
-    <PageHeader title="报账管理">
-      <template #actions>
-        <el-input v-model="keyword" placeholder="事由关键字" clearable style="width: 220px" @keyup.enter="reload" />
-        <el-button @click="fetchList">刷新</el-button>
-        <el-button type="primary" @click="openCreate">新建报账</el-button>
-      </template>
-    </PageHeader>
+  <div class="fin-page reimbursement-page">
+    <PageHeader title="报账管理" />
 
-    <el-card>
-      <el-tabs v-model="activeStatus" @tab-change="reload">
+    <!-- 概览卡片 -->
+    <div class="fin-stat-row fin-stat-row-4">
+      <div class="fin-stat-card primary">
+        <div class="fin-stat-icon"><DocumentChecked /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">报账总数</div>
+          <div class="fin-stat-value">{{ total }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card warning">
+        <div class="fin-stat-icon"><Timer /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">待审批</div>
+          <div class="fin-stat-value">{{ pendingCount }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card success">
+        <div class="fin-stat-icon"><CircleCheck /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">已通过</div>
+          <div class="fin-stat-value">{{ approvedCount }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card info">
+        <div class="fin-stat-icon"><Money /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">已支付</div>
+          <div class="fin-stat-value">{{ paidCount }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="fin-filter-bar">
+      <div class="fin-filter-left">
+        <el-input v-model="keyword" placeholder="事由关键字" clearable style="width: 220px" @keyup.enter="reload" />
+      </div>
+      <div class="fin-filter-right">
+        <el-button @click="fetchList">
+          <el-icon class="btn-icon"><Refresh /></el-icon> 刷新
+        </el-button>
+        <el-button type="primary" @click="openCreate">
+          <el-icon class="btn-icon"><Plus /></el-icon> 新建报账
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 列表 -->
+    <div class="fin-table-card">
+      <div class="fin-table-card-header">
+        <div class="fin-table-card-header-left">
+          <span class="fin-table-card-title">报账列表</span>
+          <span class="fin-table-card-count">共 {{ total }} 条</span>
+        </div>
+      </div>
+      <el-tabs v-model="activeStatus" @tab-change="reload" class="fin-tabs">
         <el-tab-pane label="全部" name="" />
         <el-tab-pane label="待审批" name="PENDING" />
         <el-tab-pane label="已通过" name="APPROVED" />
@@ -17,15 +65,15 @@
         <el-tab-pane label="已支付" name="PAID" />
       </el-tabs>
 
-      <el-table :data="list" v-loading="loading" row-key="id">
+      <el-table :data="list" v-loading="loading" row-key="id" class="fin-table">
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="amount" label="金额" width="120">
-          <template #default="{ row }">￥{{ formatAmount(row.amount) }}</template>
+          <template #default="{ row }"><span class="fin-amount expense">￥{{ formatAmount(row.amount) }}</span></template>
         </el-table-column>
         <el-table-column prop="reason" label="事由" min-width="260" />
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)">{{ statusText(row.status) }}</el-tag>
+            <el-tag :type="statusTagType(row.status)" class="fin-type-tag">{{ statusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" />
@@ -39,7 +87,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pager">
+      <div class="fin-pager">
         <el-pagination
           background
           layout="total, prev, pager, next, sizes"
@@ -51,9 +99,9 @@
           @update:page-size="(s) => { pageSize = s; page = 1; fetchList() }"
         />
       </div>
-    </el-card>
+    </div>
 
-    <el-dialog v-model="dialogVisible" title="新建报账" width="520px">
+    <el-dialog v-model="dialogVisible" title="新建报账" width="520px" class="fin-dialog">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="金额" prop="amount">
           <el-input-number v-model="form.amount" :min="0" :precision="2" :step="10" style="width: 220px" />
@@ -74,8 +122,9 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { DocumentChecked, Timer, CircleCheck, Money, Refresh, Plus } from '@element-plus/icons-vue'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
@@ -87,6 +136,10 @@ const page = ref(1)
 const pageSize = ref(10)
 const activeStatus = ref('')
 const keyword = ref('')
+
+const pendingCount = computed(() => list.value.filter(i => i.status === 'PENDING' || i.status === 'APPROVING').length)
+const approvedCount = computed(() => list.value.filter(i => i.status === 'APPROVED').length)
+const paidCount = computed(() => list.value.filter(i => i.status === 'PAID').length)
 
 const dialogVisible = ref(false)
 const formRef = ref()
@@ -263,27 +316,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page {
+.reimbursement-page {
   padding: 16px;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.pager {
-  margin-top: 14px;
-  display: flex;
-  justify-content: flex-end;
+.btn-icon {
+  margin-right: 4px;
 }
 </style>

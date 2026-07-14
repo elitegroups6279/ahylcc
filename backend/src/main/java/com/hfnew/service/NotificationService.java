@@ -27,69 +27,57 @@ public class NotificationService {
     private final JdbcTemplate jdbcTemplate;
     private final SystemConfigService systemConfigService;
 
+    /**
+     * 费用预警列表：以最后一次缴费记录为锚，按实际日历天计算日费率，
+     * 请假期间有效期顺延（不消耗），剩余天数 = 有效截止日 - 今天。
+     */
     public List<FeeWarningItem> listFeeWarnings() {
         int warningDays = parseInt(systemConfigService.getConfig("fee_warning_days"), 7);
-        BigDecimal shortTermDailyRate = parseBigDecimal(systemConfigService.getConfig("short_term_daily_rate"), new BigDecimal("180"));
-
-        // Pre-fetch latest ELDERLY_FEE payment validity_end_date per elderly
-        Map<Long, LocalDate> latestValidityEndMap = new HashMap<>();
-        String latestSql = """
-                SELECT elderly_id, validity_end_date
-                FROM t_payment_record
-                WHERE id IN (
-                    SELECT MAX(id) FROM t_payment_record
-                    WHERE income_type = 'ELDERLY_FEE' AND deleted = 0
-                    GROUP BY elderly_id
-                )
-                """;
-        jdbcTemplate.query(latestSql, rs -> {
-            Long eid = rs.getLong("elderly_id");
-            Date d = rs.getDate("validity_end_date");
-            if (d != null) {
-                latestValidityEndMap.put(eid, d.toLocalDate());
-            }
-        });
+        LocalDate today = LocalDate.now();
 
         String sql = """
                 SELECT e.id AS elderly_id,
-                       e.name AS name,
-                       e.contract_monthly_fee AS contract_monthly_fee,
-                       COALESCE(a.balance, 0) AS balance
+                       e.name AS name
                 FROM t_elderly e
-                LEFT JOIN t_fee_account a ON a.elderly_id = e.id AND a.deleted = 0
-                WHERE e.deleted = 0 AND e.status = 'ACTIVE'
+                WHERE e.deleted = 0 AND e.status IN ('ACTIVE', 'ON_LEAVE')
                   AND e.category != 'WU_BAO'
                 """;
-
-        YearMonth ym = YearMonth.now();
-        int daysOfMonth = ym.lengthOfMonth();
-        LocalDate today = LocalDate.now();
 
         List<FeeWarningItem> all = jdbcTemplate.query(sql, (rs, rowNum) -> {
             Long elderlyId = rs.getLong("elderly_id");
             String name = rs.getString("name");
-            BigDecimal balance = rs.getBigDecimal("balance");
-            BigDecimal contractMonthlyFee = rs.getBigDecimal("contract_monthly_fee");
 
-            int remainingDays = 0;
-            LocalDate validityEndDate = latestValidityEndMap.get(elderlyId);
-            if (validityEndDate != null) {
-                remainingDays = (int) ChronoUnit.DAYS.between(today, validityEndDate);
-            } else {
-                BigDecimal dailyRate = shortTermDailyRate;
-                if (contractMonthlyFee != null && contractMonthlyFee.compareTo(BigDecimal.ZERO) > 0 && daysOfMonth > 0) {
-                    dailyRate = contractMonthlyFee.divide(new BigDecimal(daysOfMonth), 6, RoundingMode.HALF_UP);
-                }
-
-                if (dailyRate != null && dailyRate.compareTo(BigDecimal.ZERO) > 0 && balance != null) {
-                    remainingDays = balance.divide(dailyRate, 0, RoundingMode.FLOOR).intValue();
-                }
+            LatestPaymentInfo info = getLatestPaymentInfo(elderlyId);
+            if (info == null) {
+                // 无缴费记录：显示为"未缴费"，剩余0天，余额0
+                FeeWarningItem item = new FeeWarningItem();
+                item.setElderlyId(elderlyId);
+                item.setName(name);
+                item.setBalance(BigDecimal.ZERO);
+                item.setRemainingDays(0);
+                return item;
             }
+
+            int leaveDays = countLeaveDaysInRange(elderlyId, info.validityStart, info.validityEnd);
+
+            // 有效期顺延（请假天数 = 暂停消耗的天数）
+            LocalDate effectiveEnd = info.validityEnd.plusDays(leaveDays);
+            int remainingDays = Math.max(0, (int) ChronoUnit.DAYS.between(today, effectiveEnd));
+
+            // 日费率 = 缴费金额 / 覆盖总天数（自然日，自动处理大小月）
+            long coverageDays = ChronoUnit.DAYS.between(info.validityStart, info.validityEnd);
+            BigDecimal dailyRate = coverageDays > 0
+                    ? info.amount.divide(BigDecimal.valueOf(coverageDays), 6, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+
+            // 实时有效余额 = 剩余天数 × 日费率
+            BigDecimal effectiveBalance = dailyRate.multiply(BigDecimal.valueOf(Math.max(remainingDays, 0)))
+                    .setScale(2, RoundingMode.HALF_UP);
 
             FeeWarningItem item = new FeeWarningItem();
             item.setElderlyId(elderlyId);
             item.setName(name);
-            item.setBalance(balance == null ? BigDecimal.ZERO : balance);
+            item.setBalance(effectiveBalance);
             item.setRemainingDays(remainingDays);
             return item;
         });
@@ -107,6 +95,96 @@ public class NotificationService {
             return Integer.compare(ra, rb);
         });
         return filtered;
+    }
+
+    /**
+     * 计算有效剩余天数（供外部调用：缴费/结算后更新预警状态）。
+     */
+    public int calcEffectiveRemainingDays(Long elderlyId) {
+        LatestPaymentInfo info = getLatestPaymentInfo(elderlyId);
+        if (info == null) return 0;
+        int leaveDays = countLeaveDaysInRange(elderlyId, info.validityStart, info.validityEnd);
+        LocalDate effectiveEnd = info.validityEnd.plusDays(leaveDays);
+        return Math.max(0, (int) ChronoUnit.DAYS.between(LocalDate.now(), effectiveEnd));
+    }
+
+    // ===== 内部辅助 =====
+
+    private static class LatestPaymentInfo {
+        final BigDecimal amount;
+        final LocalDate validityStart;
+        final LocalDate validityEnd;
+        LatestPaymentInfo(BigDecimal amount, LocalDate start, LocalDate end) {
+            this.amount = amount;
+            this.validityStart = start;
+            this.validityEnd = end;
+        }
+    }
+
+    /**
+     * 获取老人最后一次 ELDERLY_FEE 缴费记录。
+     */
+    private LatestPaymentInfo getLatestPaymentInfo(Long elderlyId) {
+        String sql = """
+                SELECT amount, validity_start_date, validity_end_date
+                FROM t_payment_record
+                WHERE elderly_id = ? AND income_type = 'ELDERLY_FEE' AND deleted = 0
+                ORDER BY create_time DESC
+                LIMIT 1
+                """;
+        return jdbcTemplate.query(sql, rs -> {
+            if (rs.next()) {
+                BigDecimal amount = rs.getBigDecimal("amount");
+                Date start = rs.getDate("validity_start_date");
+                Date end = rs.getDate("validity_end_date");
+                if (amount != null && start != null && end != null) {
+                    return new LatestPaymentInfo(amount, start.toLocalDate(), end.toLocalDate());
+                }
+            }
+            return null;
+        }, elderlyId);
+    }
+
+    /**
+     * 统计指定区间内的请假天数。
+     * - ON_LEAVE（无 returnDate）：请假起始日到 today（含），期间冻结消耗
+     * - RETURNED（有 returnDate）：请假起始日到 returnDate（含），已固定
+     * - 跨区间请假自动截断到 [rangeStart, rangeEnd]
+     */
+    private int countLeaveDaysInRange(Long elderlyId, LocalDate rangeStart, LocalDate rangeEnd) {
+        LocalDate today = LocalDate.now();
+        String sql = """
+                SELECT start_date, return_date, status
+                FROM t_elderly_leave
+                WHERE elderly_id = ? AND deleted = 0
+                  AND status IN ('ON_LEAVE', 'RETURNED')
+                  AND start_date <= ?
+                """;
+        return jdbcTemplate.query(sql, rs -> {
+            int total = 0;
+            while (rs.next()) {
+                LocalDate start = rs.getDate("start_date").toLocalDate();
+                String status = rs.getString("status");
+                Date rd = rs.getDate("return_date");
+
+                // 确定请假结束日
+                LocalDate leaveEnd;
+                if ("ON_LEAVE".equals(status)) {
+                    leaveEnd = today;
+                } else {
+                    leaveEnd = rd != null ? rd.toLocalDate() : today;
+                }
+
+                // 截断到 [rangeStart, rangeEnd]
+                LocalDate effectiveStart = start.isBefore(rangeStart) ? rangeStart : start;
+                LocalDate effectiveEnd = leaveEnd.isAfter(rangeEnd) ? rangeEnd : leaveEnd;
+
+                if (!effectiveStart.isAfter(effectiveEnd)) {
+                    total += (int) ChronoUnit.DAYS.between(effectiveStart, effectiveEnd) + 1;
+                }
+            }
+            return total;
+        }, elderlyId, rangeEnd);
     }
 
     public int countPendingReimbursements() {

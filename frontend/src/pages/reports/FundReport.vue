@@ -2,6 +2,11 @@
   <div class="page">
     <PageHeader title="资金使用明细">
       <template #actions>
+        <el-select v-model="supplyCategory" placeholder="供应类别" clearable style="width: 150px" @change="reload">
+          <el-option label="集中供养" value="CENTRALIZED" />
+          <el-option label="社会化" value="SOCIAL" />
+          <el-option label="全部" value="" />
+        </el-select>
         <el-date-picker
           v-model="dateRange"
           type="daterange"
@@ -27,7 +32,7 @@
         <el-table-column prop="recipientName" label="领用人" width="140" />
         <el-table-column prop="outDate" label="出库日期" width="130" />
         <el-table-column prop="amount" label="金额" width="140">
-          <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
+          <template #default="{ row }">¥{{ formatMoney(row.amount) }}</template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.remark || '-' }}</template>
@@ -55,6 +60,9 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
+import { useFormat } from '@/composables/useFormat'
+
+const { formatMoney, supplyCategoryLabel } = useFormat()
 
 const loading = ref(false)
 const list = ref([])
@@ -62,30 +70,19 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const dateRange = ref([])
-
-function formatMoney(val) {
-  if (val === null || val === undefined) return '¥0.00'
-  const n = Number(val)
-  if (Number.isNaN(n)) return '¥' + String(val)
-  return '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function supplyCategoryLabel(cat) {
-  if (cat === 'CENTRALIZED') return '集中供养'
-  if (cat === 'SOCIAL') return '社会化'
-  return cat || '-'
-}
+const supplyCategory = ref('CENTRALIZED')
 
 async function fetchList() {
   loading.value = true
   try {
     const [startDate, endDate] = dateRange.value || []
-    const resp = await api.get('/api/reports/fund-usage', {
+    const resp = await api.get('/api/warehouse-report/fund-usage', {
       params: {
         page: page.value,
         size: pageSize.value,
         startDate: startDate || undefined,
-        endDate: endDate || undefined
+        endDate: endDate || undefined,
+        supplyCategory: supplyCategory.value || undefined
       }
     })
     const body = resp.data
@@ -105,7 +102,30 @@ function reload() {
 }
 
 function exportReport() {
-  ElMessage.info('功能开发中')
+  if (!list.value || list.value.length === 0) {
+    ElMessage.warning('暂无数据可导出')
+    return
+  }
+  const headers = ['出库日期', '物资名称', '数量', '供应类别', '领用人', '金额', '备注']
+  const rows = list.value.map(item => [
+    item.outDate || '',
+    item.materialName || '',
+    item.quantity || 0,
+    supplyCategoryLabel(item.supplyCategory),
+    item.recipientName || '',
+    formatMoney(item.amount),
+    item.remark || ''
+  ])
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const BOM = '\uFEFF'
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `资金使用明细_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('导出成功')
 }
 
 onMounted(() => {

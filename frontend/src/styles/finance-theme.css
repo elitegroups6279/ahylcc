@@ -1,0 +1,554 @@
+/* =========================================================
+   财务管理模块统一设计系统 (Finance Theme)
+   基于方案 B：现代仪表板风格
+   主色：#2B7A78
+   ========================================================= */
+
+/* ------------------- 页面容器 ------------------- */
+.fin-page {
+  padding: 16px;
+  background: var(--color-bg-page, #F5F7FA);
+  min-height: 100%;
+}
+
+/* ------------------- 统计卡片 ------------------- */
+.fin-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.fin-stat-row-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.fin-stat-row-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.fin-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(43, 122, 120, 0.06);
+  border: 1px solid rgba(43, 122, 120, 0.08);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.fin-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(43, 122, 120, 0.12);
+}
+
+.fin-stat-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--fin-card-accent, #2B7A78);
+}
+
+.fin-stat-card.income {
+  background: linear-gradient(135deg, #F0F9F0 0%, #ffffff 100%);
+  --fin-card-accent: #67C23A;
+}
+
+.fin-stat-card.expense {
+  background: linear-gradient(135deg, #FDF2F2 0%, #ffffff 100%);
+  --fin-card-accent: #F56C6C;
+}
+
+.fin-stat-card.net {
+  background: linear-gradient(135deg, #E8F4F4 0%, #ffffff 100%);
+  --fin-card-accent: #2B7A78;
+}
+
+.fin-stat-card.primary {
+  background: linear-gradient(135deg, #E8F4F4 0%, #ffffff 100%);
+  --fin-card-accent: #2B7A78;
+}
+
+.fin-stat-card.warning {
+  background: linear-gradient(135deg, #FFF8E6 0%, #ffffff 100%);
+  --fin-card-accent: #E6A23C;
+}
+
+.fin-stat-card.info {
+  background: linear-gradient(135deg, #F0F5FF 0%, #ffffff 100%);
+  --fin-card-accent: #409EFF;
+}
+
+.fin-stat-card.purple {
+  background: linear-gradient(135deg, #F5F0FF 0%, #ffffff 100%);
+  --fin-card-accent: #722ED1;
+}
+
+.fin-stat-card.success {
+  background: linear-gradient(135deg, #F0F9F0 0%, #ffffff 100%);
+  --fin-card-accent: #52C41A;
+}
+
+.fin-stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(43, 122, 120, 0.1);
+  color: #2B7A78;
+  font-size: 24px;
+}
+
+.fin-stat-card.income .fin-stat-icon {
+  background: rgba(103, 194, 58, 0.12);
+  color: #67C23A;
+}
+
+.fin-stat-card.expense .fin-stat-icon {
+  background: rgba(245, 108, 108, 0.12);
+  color: #F56C6C;
+}
+
+.fin-stat-card.net .fin-stat-icon,
+.fin-stat-card.primary .fin-stat-icon {
+  background: rgba(43, 122, 120, 0.12);
+  color: #2B7A78;
+}
+
+.fin-stat-card.warning .fin-stat-icon {
+  background: rgba(230, 162, 60, 0.12);
+  color: #E6A23C;
+}
+
+.fin-stat-card.info .fin-stat-icon {
+  background: rgba(64, 158, 255, 0.12);
+  color: #409EFF;
+}
+
+.fin-stat-card.purple .fin-stat-icon {
+  background: rgba(114, 46, 209, 0.12);
+  color: #722ED1;
+}
+
+.fin-stat-card.success .fin-stat-icon {
+  background: rgba(82, 196, 26, 0.12);
+  color: #52C41A;
+}
+
+.fin-stat-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.fin-stat-label {
+  font-size: 14px;
+  color: #6B7280;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.fin-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'DIN Alternate', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  letter-spacing: -0.5px;
+  color: #1F2937;
+  line-height: 1.2;
+}
+
+.fin-stat-card.income .fin-stat-value {
+  color: #52C41A;
+}
+
+.fin-stat-card.expense .fin-stat-value {
+  color: #F56C6C;
+}
+
+.fin-stat-card.net .fin-stat-value,
+.fin-stat-card.primary .fin-stat-value {
+  color: #2B7A78;
+}
+
+.fin-stat-card.warning .fin-stat-value {
+  color: #E6A23C;
+}
+
+.fin-stat-card.info .fin-stat-value {
+  color: #409EFF;
+}
+
+.fin-stat-card.purple .fin-stat-value {
+  color: #722ED1;
+}
+
+.fin-stat-card.success .fin-stat-value {
+  color: #52C41A;
+}
+
+.fin-stat-sub {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-top: 4px;
+}
+
+/* ------------------- 视图切换器 ------------------- */
+.fin-switcher {
+  display: inline-flex;
+  background: #F0F0F0;
+  border-radius: 24px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.fin-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 24px;
+  border: none;
+  background: transparent;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.fin-switcher-btn:hover {
+  color: #1F2937;
+}
+
+.fin-switcher-btn.active {
+  background: #2B7A78;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(43, 122, 120, 0.3);
+  font-weight: 600;
+}
+
+.fin-switcher-btn .el-icon {
+  font-size: 14px;
+}
+
+/* ------------------- 筛选工具栏 ------------------- */
+.fin-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #E5E7EB;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.fin-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fin-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ------------------- 卡片容器 ------------------- */
+.fin-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #E5E7EB;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.fin-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E7EB;
+  background: #FAFBFC;
+}
+
+.fin-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fin-card-title::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: #2B7A78;
+  border-radius: 2px;
+}
+
+.fin-card-body {
+  padding: 20px;
+}
+
+.fin-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ------------------- 表格容器 ------------------- */
+.fin-table-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #E5E7EB;
+  overflow: hidden;
+}
+
+.fin-table-card .fin-table-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E7EB;
+  background: #F5F8F8;
+}
+
+.fin-table-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fin-table-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+}
+
+.fin-table-card-count {
+  font-size: 13px;
+  color: #6B7280;
+  background: #E5E7EB;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.fin-table {
+  border: none;
+}
+
+.fin-table :deep(.el-table__header-wrapper th.el-table__cell) {
+  background: #F5F8F8 !important;
+  color: #374151;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid #E5E7EB;
+  padding: 14px 12px;
+}
+
+.fin-table :deep(.el-table__body-wrapper td.el-table__cell) {
+  padding: 14px 12px;
+  color: #4B5563;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.fin-table :deep(.el-table__row:hover > td.el-table__cell) {
+  background: #F9FAFB !important;
+}
+
+.fin-table :deep(.el-table__body tr:last-child td.el-table__cell) {
+  border-bottom: none;
+}
+
+/* ------------------- 金额样式 ------------------- */
+.fin-amount {
+  font-weight: 700;
+  font-family: 'DIN Alternate', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  font-size: 15px;
+}
+
+.fin-amount.income {
+  color: #52C41A;
+}
+
+.fin-amount.expense {
+  color: #F56C6C;
+}
+
+.fin-amount.primary {
+  color: #2B7A78;
+}
+
+.fin-amount.warning {
+  color: #E6A23C;
+}
+
+.fin-amount.bold {
+  font-size: 16px;
+}
+
+/* ------------------- 标签样式 ------------------- */
+.fin-type-tag {
+  border-radius: 12px;
+  font-weight: 500;
+  padding: 0 10px;
+  height: 24px;
+  line-height: 24px;
+}
+
+.fin-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ------------------- 分页器 ------------------- */
+.fin-pager {
+  padding: 14px 20px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #E5E7EB;
+  background: #FAFBFC;
+}
+
+/* ------------------- 对话框 ------------------- */
+.fin-dialog .el-dialog__header {
+  border-bottom: 1px solid #E5E7EB;
+  padding: 16px 20px;
+  margin-right: 0;
+}
+
+.fin-dialog .el-dialog__title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1F2937;
+}
+
+.fin-dialog .el-dialog__body {
+  padding: 20px;
+}
+
+.fin-dialog .el-dialog__footer {
+  border-top: 1px solid #E5E7EB;
+  padding: 12px 20px;
+}
+
+/* ------------------- 表单分区 ------------------- */
+.fin-form-section {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #E5E7EB;
+}
+
+.fin-form-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.fin-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fin-section-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: #2B7A78;
+  border-radius: 2px;
+}
+
+/* ------------------- Tab 样式覆盖 ------------------- */
+.fin-tabs.el-tabs--top .el-tabs__header {
+  margin-bottom: 0;
+  border-bottom: 1px solid #E5E7EB;
+  background: #F5F8F8;
+  padding: 0 20px;
+}
+
+.fin-tabs.el-tabs--top .el-tabs__item {
+  height: 46px;
+  line-height: 46px;
+  font-size: 14px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.fin-tabs.el-tabs--top .el-tabs__item.is-active {
+  color: #2B7A78;
+  font-weight: 600;
+}
+
+.fin-tabs.el-tabs--top .el-tabs__active-bar {
+  background: #2B7A78;
+  height: 3px;
+}
+
+/* ------------------- 响应式 ------------------- */
+@media (max-width: 1200px) {
+  .fin-stat-row,
+  .fin-stat-row-4,
+  .fin-stat-row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .fin-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fin-filter-right {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .fin-page {
+    padding: 12px;
+  }
+
+  .fin-stat-card {
+    padding: 18px 16px;
+  }
+
+  .fin-stat-value {
+    font-size: 22px;
+  }
+
+  .fin-filter-left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fin-filter-left > * {
+    width: 100% !important;
+  }
+}

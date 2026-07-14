@@ -22,10 +22,10 @@
           <template #default="{ row }">{{ supplyCategoryLabel(row.supplyCategory) }}</template>
         </el-table-column>
         <el-table-column prop="budgetAmount" label="预算金额" width="140">
-          <template #default="{ row }">{{ formatMoney(row.budgetAmount) }}</template>
+          <template #default="{ row }">¥{{ formatMoney(row.budgetAmount) }}</template>
         </el-table-column>
         <el-table-column prop="usedAmount" label="已使用" width="140">
-          <template #default="{ row }">{{ formatMoney(row.usedAmount) }}</template>
+          <template #default="{ row }">¥{{ formatMoney(row.usedAmount) }}</template>
         </el-table-column>
         <el-table-column label="使用率" width="200">
           <template #default="{ row }">
@@ -93,6 +93,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
+import { useFormat } from '@/composables/useFormat'
+
+const { formatMoney, supplyCategoryLabel } = useFormat()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -123,19 +126,6 @@ const rules = {
   month: [{ required: true, message: '请选择月份', trigger: 'change' }],
   supplyCategory: [{ required: true, message: '请选择资金类别', trigger: 'change' }],
   budgetAmount: [{ required: true, message: '请输入预算金额', trigger: 'blur' }]
-}
-
-function formatMoney(val) {
-  if (val === null || val === undefined) return '¥0.00'
-  const n = Number(val)
-  if (Number.isNaN(n)) return '¥' + String(val)
-  return '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function supplyCategoryLabel(cat) {
-  if (cat === 'CENTRALIZED') return '集中供养'
-  if (cat === 'SOCIAL') return '社会化'
-  return cat || '-'
 }
 
 function usageRate(row) {

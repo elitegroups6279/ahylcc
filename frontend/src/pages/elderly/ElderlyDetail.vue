@@ -187,6 +187,139 @@
         <el-table-column prop="createTime" label="时间" width="180" />
         <el-table-column prop="remark" label="备注" min-width="200" />
       </el-table>
+
+      <!-- 用药信息 (med-tabs) -->
+      <el-tabs v-model="medTab" class="med-tabs" style="margin-top: 16px">
+        <el-tab-pane label="用药计划" name="plan">
+          <div class="med-table-card" style="margin-top: 0">
+            <div class="med-table-card-header">
+              <div class="med-table-card-header-left">
+                <span class="med-table-card-title">用药计划</span>
+                <span class="med-table-card-count">{{ medicationPlans.length }} 条</span>
+              </div>
+            </div>
+            <el-table :data="medicationPlans" v-loading="medPlanLoading" row-key="id" class="med-table" size="small">
+              <el-table-column label="药品" min-width="180">
+                <template #default="{ row }">
+                  <div style="display: flex; flex-wrap: wrap; gap: 4px">
+                    <el-tag
+                      v-for="(item, idx) in (row.items || [])"
+                      :key="idx"
+                      size="small"
+                      type="info"
+                      effect="plain"
+                    >{{ item.drugName }}<span v-if="item.dosagePerTime" style="color: #6B7280; font-size: 11px"> {{ item.dosagePerTime }}{{ item.dosageUnit || '' }}</span></el-tag>
+                    <span v-if="!row.items || row.items.length === 0" style="color: #9CA3AF">-</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="频次" width="80">
+                <template #default="{ row }">
+                  {{ row.frequencyType === 'MULTI_DAILY' ? '每日' : row.frequencyType === 'N_DAYS' ? '每N日' : row.frequencyType === 'PRN' ? '必要时' : '一次性' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="服药时段" width="160">
+                <template #default="{ row }">
+                  <span
+                    v-for="slot in parseSlots(row.timeSlots)"
+                    :key="slot"
+                    class="med-pill"
+                    :class="slotPillClass(slot)"
+                    style="margin-right: 4px"
+                  >{{ slotLabelMap(slot) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="startDate" label="开始" width="100" />
+              <el-table-column label="预计耗尽" width="110">
+                <template #default="{ row }">{{ earliestDepletion(row.items) || '-' }}</template>
+              </el-table-column>
+              <el-table-column prop="prescriberName" label="处方医生" width="80" />
+              <el-table-column label="状态" width="80">
+                <template #default="{ row }">
+                  <span class="med-pill" :class="planStatusPill(row.status)">{{ planStatusLabel(row.status) }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="!medPlanLoading && medicationPlans.length === 0" description="暂无用药计划" :image-size="60" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="历史用药记录" name="records">
+          <div class="med-table-card" style="margin-top: 0">
+            <div class="med-table-card-header">
+              <div class="med-table-card-header-left">
+                <span class="med-table-card-title">历史用药记录</span>
+                <span class="med-table-card-count">{{ medicationRecords.length }} 条</span>
+              </div>
+              <div class="med-filter-right" style="gap: 8px">
+                <div class="med-switcher">
+                  <button class="med-switcher-btn" :class="{ active: medViewMode === 'table' }" @click="medViewMode = 'table'">表格</button>
+                  <button class="med-switcher-btn" :class="{ active: medViewMode === 'timeline' }" @click="medViewMode = 'timeline'">时间线</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 表格模式 -->
+            <template v-if="medViewMode === 'table'">
+              <el-table :data="medicationRecords" v-loading="medRecordLoading" row-key="recordDate" class="med-table" size="small">
+                <el-table-column prop="recordDate" label="日期" width="100" />
+                <el-table-column prop="drugName" label="药品" width="120" />
+                <el-table-column label="早晨" width="70" align="center">
+                  <template #default="{ row }">
+                    <span v-if="row.morning" class="med-pill" :class="recordStatusPill(row.morning)">{{ statusIcon(row.morning) }}</span>
+                    <span v-else>-</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="中午" width="70" align="center">
+                  <template #default="{ row }">
+                    <span v-if="row.afternoon" class="med-pill" :class="recordStatusPill(row.afternoon)">{{ statusIcon(row.afternoon) }}</span>
+                    <span v-else>-</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="晚上" width="70" align="center">
+                  <template #default="{ row }">
+                    <span v-if="row.evening" class="med-pill" :class="recordStatusPill(row.evening)">{{ statusIcon(row.evening) }}</span>
+                    <span v-else>-</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="睡前" width="70" align="center">
+                  <template #default="{ row }">
+                    <span v-if="row.bedtime" class="med-pill" :class="recordStatusPill(row.bedtime)">{{ statusIcon(row.bedtime) }}</span>
+                    <span v-else>-</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="executorName" label="护工" width="80" />
+                <el-table-column prop="remark" label="备注" />
+              </el-table>
+            </template>
+
+            <!-- 时间线模式 -->
+            <template v-if="medViewMode === 'timeline'">
+              <div v-loading="medRecordLoading" style="padding: 16px 20px">
+                <el-timeline v-if="medicationRecords.length > 0">
+                  <el-timeline-item
+                    v-for="record in medicationRecords"
+                    :key="record.recordDate + record.drugName"
+                    :timestamp="record.recordDate"
+                    placement="top"
+                    :color="timelineColor(record)"
+                  >
+                    <div style="font-weight: 600; color: #1F2937">{{ record.drugName }}</div>
+                    <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap">
+                      <span v-if="record.morning" class="med-pill" :class="recordStatusPill(record.morning)">早晨 {{ statusIcon(record.morning) }}</span>
+                      <span v-if="record.afternoon" class="med-pill" :class="recordStatusPill(record.afternoon)">中午 {{ statusIcon(record.afternoon) }}</span>
+                      <span v-if="record.evening" class="med-pill" :class="recordStatusPill(record.evening)">晚上 {{ statusIcon(record.evening) }}</span>
+                      <span v-if="record.bedtime" class="med-pill" :class="recordStatusPill(record.bedtime)">睡前 {{ statusIcon(record.bedtime) }}</span>
+                    </div>
+                    <div v-if="record.executorName" style="color: #6B7280; font-size: 12px; margin-top: 4px">护工: {{ record.executorName }}</div>
+                  </el-timeline-item>
+                </el-timeline>
+                <el-empty v-else description="暂无用药记录" :image-size="60" />
+              </div>
+            </template>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
 
     <!-- 变更记录 -->
@@ -228,6 +361,14 @@ const bedOptions = ref([])
 const changeLogs = ref([])
 const leaveHistory = ref([])
 const leaveLoading = ref(false)
+const medicationPlans = ref([])
+const medicationRecords = ref([])
+const medPlanLoading = ref(false)
+const medRecordLoading = ref(false)
+
+// Medication tabs & view mode
+const medTab = ref('plan')
+const medViewMode = ref('table')
 
 // Original values for cancel
 const originalValues = reactive({})
@@ -594,6 +735,89 @@ async function fetchChangeLogs() {
   }
 }
 
+// ---- Medication helpers ----
+function statusIcon(status) {
+  return { DONE: '✓', PENDING: '○', MISSED: '✗', REFUSED: '⊘', SKIPPED: '⊘' }[status] || '-'
+}
+
+function slotLabelMap(slot) {
+  const map = { MORNING: '早晨', AFTERNOON: '中午', EVENING: '晚上', BEDTIME: '睡前' }
+  return map[slot] || slot
+}
+
+function slotPillClass(slot) {
+  const map = { MORNING: 'orange', AFTERNOON: 'blue', EVENING: 'gray', BEDTIME: 'teal' }
+  return map[slot] || 'gray'
+}
+
+function parseSlots(slots) {
+  if (!slots) return []
+  if (Array.isArray(slots)) return slots
+  try { return JSON.parse(slots) } catch { return [] }
+}
+
+function earliestDepletion(items) {
+  if (!items || items.length === 0) return null
+  const dates = items.map(i => i.depletionDate).filter(Boolean).sort()
+  return dates[0] || null
+}
+
+function planStatusLabel(status) {
+  const map = { ACTIVE: '生效中', PAUSED: '已暂停', COMPLETED: '已完成', STOPPED: '已停止' }
+  return map[status] || status
+}
+
+function planStatusPill(status) {
+  const map = { ACTIVE: 'green', PAUSED: 'orange', COMPLETED: 'gray', STOPPED: 'red' }
+  return map[status] || 'gray'
+}
+
+function recordStatusPill(status) {
+  const map = { DONE: 'green', PENDING: 'blue', MISSED: 'red', REFUSED: 'orange', SKIPPED: 'gray' }
+  return map[status] || 'gray'
+}
+
+function timelineColor(record) {
+  const statuses = [record.morning, record.afternoon, record.evening, record.bedtime].filter(Boolean)
+  if (statuses.some(s => s === 'MISSED')) return '#F56C6C'
+  if (statuses.some(s => s === 'REFUSED')) return '#E6A23C'
+  if (statuses.every(s => s === 'DONE')) return '#52C41A'
+  if (statuses.some(s => s === 'PENDING')) return '#3B82F6'
+  return '#6B7280'
+}
+
+async function fetchMedicationPlans() {
+  medPlanLoading.value = true
+  try {
+    const resp = await api.get('/api/medication/plans', { params: { elderlyId: route.params.id, page: 1, size: 50 } })
+    medicationPlans.value = resp.data?.data?.records || resp.data?.data || []
+  } catch (e) { console.error('Failed to load medication plans', e) }
+  finally { medPlanLoading.value = false }
+}
+
+async function fetchMedicationRecords() {
+  medRecordLoading.value = true
+  try {
+    const resp = await api.get(`/api/medication/records/elderly/${route.params.id}`, { params: { days: 7 } })
+    const raw = resp.data?.data || []
+    const grouped = {}
+    raw.forEach(r => {
+      const key = `${r.recordDate}_${r.drugName}`
+      if (!grouped[key]) {
+        grouped[key] = { recordDate: r.recordDate, drugName: r.drugName, morning: null, afternoon: null, evening: null, bedtime: null, executorName: r.executorName || '', remark: r.remark || '' }
+      }
+      if (r.timeSlot === 'MORNING') grouped[key].morning = r.status
+      else if (r.timeSlot === 'AFTERNOON') grouped[key].afternoon = r.status
+      else if (r.timeSlot === 'EVENING') grouped[key].evening = r.status
+      else if (r.timeSlot === 'BEDTIME') grouped[key].bedtime = r.status
+      if (r.executorName) grouped[key].executorName = r.executorName
+      if (r.remark) grouped[key].remark = r.remark
+    })
+    medicationRecords.value = Object.values(grouped).sort((a, b) => b.recordDate.localeCompare(a.recordDate))
+  } catch (e) { console.error('Failed to load medication records', e) }
+  finally { medRecordLoading.value = false }
+}
+
 async function fetchLeaveHistory() {
   leaveLoading.value = true
   try {
@@ -644,6 +868,8 @@ onMounted(async () => {
   await fetchLeaveHistory()
   await fetchPayments()
   await fetchChangeLogs()
+  fetchMedicationPlans()
+  fetchMedicationRecords()
 })
 </script>
 

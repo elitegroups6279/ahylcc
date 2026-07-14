@@ -21,7 +21,7 @@
         <el-table-column prop="category" label="类别" min-width="140" />
         <el-table-column prop="totalQuantity" label="消耗数量" width="120" />
         <el-table-column prop="totalAmount" label="消耗金额" width="140">
-          <template #default="{ row }">{{ formatMoney(row.totalAmount) }}</template>
+          <template #default="{ row }">¥{{ formatMoney(row.totalAmount) }}</template>
         </el-table-column>
         <el-table-column label="相对占比" min-width="220">
           <template #default="{ row }">
@@ -51,6 +51,9 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
+import { useFormat } from '@/composables/useFormat'
+
+const { formatMoney } = useFormat()
 
 const loading = ref(false)
 const list = ref([])
@@ -74,13 +77,6 @@ const pagedList = computed(() => {
   const start = (page.value - 1) * pageSize.value
   return list.value.slice(start, start + pageSize.value)
 })
-
-function formatMoney(val) {
-  if (val === null || val === undefined) return '¥0.00'
-  const n = Number(val)
-  if (Number.isNaN(n)) return '¥' + String(val)
-  return '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
 
 function progress(row) {
   if (maxAmount.value <= 0) return 0

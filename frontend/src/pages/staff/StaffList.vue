@@ -181,11 +181,18 @@ const pageSize = ref(10)
 const keyword = ref('')
 const status = ref('')
 
+const statsData = reactive({
+  total: 0,
+  activeCount: 0,
+  internCount: 0,
+  certCount: 0
+})
+
 const statsItems = computed(() => [
-  { label: '护工总数', value: total.value, icon: User, gradient: 'linear-gradient(135deg, #2B7A78 0%, #3AAFA9 100%)' },
-  { label: '在职护工', value: list.value.filter(s => s.status === 'ACTIVE').length, icon: UserFilled, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-  { label: '实习护工', value: list.value.filter(s => s.probationStatus === 'INTERN').length, icon: Tickets, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-  { label: '有护工证', value: list.value.filter(s => s.hasCaregiverCert === 1).length, icon: Check, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }
+  { label: '护工总数', value: statsData.total, icon: User, gradient: 'linear-gradient(135deg, #2B7A78 0%, #3AAFA9 100%)' },
+  { label: '在职护工', value: statsData.activeCount, icon: UserFilled, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+  { label: '实习护工', value: statsData.internCount, icon: Tickets, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
+  { label: '有护工证', value: statsData.certCount, icon: Check, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }
 ])
 
 const dialogVisible = ref(false)
@@ -252,9 +259,26 @@ async function fetchList() {
   }
 }
 
+async function fetchStats() {
+  try {
+    const resp = await api.get('/api/staff/stats')
+    const body = resp.data
+    if (body.code === 200 && body.data) {
+      statsData.total = body.data.total || 0
+      statsData.activeCount = body.data.activeCount || 0
+      statsData.internCount = body.data.internCount || 0
+      statsData.certCount = body.data.certCount || 0
+    }
+  } catch (e) {
+    // 统计数据加载失败不阻塞主流程
+    console.error('获取统计数据失败', e)
+  }
+}
+
 function reload() {
   page.value = 1
   fetchList()
+  fetchStats()
 }
 
 function resetForm() {
@@ -468,6 +492,7 @@ async function remove(row) {
 
 onMounted(() => {
   fetchList()
+  fetchStats()
 })
 </script>
 

@@ -12,6 +12,8 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 // NProgress
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
+import './styles/finance-theme.css'
+import './styles/medication-theme.css'
 
 // NProgress 配置
 NProgress.configure({ showSpinner: false })

@@ -25,7 +25,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/api/warehouse-report")
 @RequiredArgsConstructor
 public class FundUsageReportController {
 
@@ -78,17 +78,17 @@ public class FundUsageReportController {
                     .forEach(m -> materialNames.put(m.getId(), m.getName()));
         }
 
-        // Load latest unit prices from inventory-in
+        // Batch load latest unit prices (replace N+1 query)
         Map<Long, BigDecimal> materialPrices = new HashMap<>();
-        for (Long matId : materialIds) {
+        if (!materialIds.isEmpty()) {
             LambdaQueryWrapper<InventoryIn> priceWrapper = new LambdaQueryWrapper<>();
-            priceWrapper.eq(InventoryIn::getMaterialId, matId)
+            priceWrapper.in(InventoryIn::getMaterialId, materialIds)
                         .isNotNull(InventoryIn::getUnitPrice)
-                        .orderByDesc(InventoryIn::getInDate)
-                        .last("LIMIT 1");
-            InventoryIn latest = inventoryInMapper.selectOne(priceWrapper);
-            if (latest != null && latest.getUnitPrice() != null) {
-                materialPrices.put(matId, latest.getUnitPrice());
+                        .orderByDesc(InventoryIn::getInDate);
+            List<InventoryIn> priceRecords = inventoryInMapper.selectList(priceWrapper);
+            // Group by materialId, keep first (latest) for each
+            for (InventoryIn record : priceRecords) {
+                materialPrices.putIfAbsent(record.getMaterialId(), record.getUnitPrice());
             }
         }
 

@@ -1,7 +1,42 @@
 <template>
-  <div class="page">
-    <PageHeader title="月度账单">
-      <template #actions>
+  <div class="fin-page fee-bill-page">
+    <PageHeader title="月度账单" />
+
+    <!-- 概览卡片 -->
+    <div class="fin-stat-row fin-stat-row-4">
+      <div class="fin-stat-card primary">
+        <div class="fin-stat-icon"><Document /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">账单总数</div>
+          <div class="fin-stat-value">{{ total }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card info">
+        <div class="fin-stat-icon"><EditPen /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">草稿</div>
+          <div class="fin-stat-value">{{ draftCount }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card warning">
+        <div class="fin-stat-icon"><CircleCheck /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">已确认</div>
+          <div class="fin-stat-value">{{ confirmedCount }}</div>
+        </div>
+      </div>
+      <div class="fin-stat-card success">
+        <div class="fin-stat-icon"><Check /></div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">已结清</div>
+          <div class="fin-stat-value">{{ settledCount }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="fin-filter-bar">
+      <div class="fin-filter-left">
         <el-date-picker
           v-model="billMonth"
           type="month"
@@ -21,6 +56,8 @@
           <el-option label="已确认" value="CONFIRMED" />
           <el-option label="已结清" value="SETTLED" />
         </el-select>
+      </div>
+      <div class="fin-filter-right">
         <el-button type="primary" :loading="generating" @click="generateBills">
           生成{{ billMonth || '本月' }}账单
         </el-button>
@@ -42,10 +79,17 @@
         >
           结算{{ billMonth }}全部已确认
         </el-button>
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
-    <el-card>
+    <!-- 账单列表 -->
+    <div class="fin-table-card">
+      <div class="fin-table-card-header">
+        <div class="fin-table-card-header-left">
+          <span class="fin-table-card-title">月度账单</span>
+          <span class="fin-table-card-count">共 {{ total }} 条</span>
+        </div>
+      </div>
       <el-table
         :data="billList"
         v-loading="loading"
@@ -53,6 +97,7 @@
         show-summary
         :summary-method="getSummaries"
         @selection-change="handleSelectionChange"
+        class="fin-table"
       >
         <el-table-column type="selection" width="40" />
         <el-table-column prop="elderlyName" label="老人姓名" width="100" />
@@ -62,6 +107,7 @@
               v-if="categoryMap[row.billingRule]"
               :type="categoryTagType(row.billingRule)"
               size="small"
+              class="fin-type-tag"
             >
               {{ categoryMap[row.billingRule] }}
             </el-tag>
@@ -75,7 +121,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="baseFee" label="基础费用" width="100" align="right">
-          <template #default="{ row }">¥{{ formatAmount(row.baseFee) }}</template>
+          <template #default="{ row }"><span class="fin-amount">¥{{ formatAmount(row.baseFee) }}</span></template>
         </el-table-column>
         <el-table-column prop="longCareAmount" label="长护险" width="90" align="right">
           <template #default="{ row }">
@@ -92,23 +138,19 @@
           </template>
         </el-table-column>
         <el-table-column prop="subsidyAmount" label="财政补助" width="90" align="right">
-          <template #default="{ row }">¥{{ formatAmount(row.subsidyAmount) }}</template>
+          <template #default="{ row }"><span class="fin-amount">¥{{ formatAmount(row.subsidyAmount) }}</span></template>
         </el-table-column>
         <el-table-column prop="personalSubsidy" label="个人补助" width="90" align="right">
-          <template #default="{ row }">¥{{ formatAmount(row.personalSubsidy) }}</template>
+          <template #default="{ row }"><span class="fin-amount">¥{{ formatAmount(row.personalSubsidy) }}</span></template>
         </el-table-column>
         <el-table-column prop="familyPayable" label="家属应缴" width="100" align="right">
           <template #default="{ row }">
-            <span style="font-weight: bold; color: #ff4d4f;">
-              ¥{{ formatAmount(row.familyPayable) }}
-            </span>
+            <span class="fin-amount expense">¥{{ formatAmount(row.familyPayable) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="govPayable" label="政府应拨" width="100" align="right">
           <template #default="{ row }">
-            <span style="font-weight: bold; color: #fa8c16;">
-              ¥{{ formatAmount(row.govPayable) }}
-            </span>
+            <span class="fin-amount warning">¥{{ formatAmount(row.govPayable) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="80" align="center">
@@ -116,6 +158,7 @@
             <el-tag
               :type="row.status === 'DRAFT' ? 'warning' : row.status === 'CONFIRMED' ? 'success' : 'info'"
               size="small"
+              class="fin-type-tag"
             >
               {{ row.status === 'DRAFT' ? '草稿' : row.status === 'CONFIRMED' ? '已确认' : '已结清' }}
             </el-tag>
@@ -144,7 +187,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pager">
+      <div class="fin-pager">
         <el-pagination
           background
           layout="total, prev, pager, next, sizes"
@@ -156,10 +199,10 @@
           @update:page-size="(s) => { pageSize = s; page = 1; fetchList() }"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 补贴明细弹窗 -->
-    <el-dialog v-model="detailVisible" title="补贴明细" width="600px">
+    <el-dialog v-model="detailVisible" title="补贴明细" width="600px" class="fin-dialog">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="老人姓名">{{ currentBill.elderlyName }}</el-descriptions-item>
         <el-descriptions-item label="账单月份">{{ currentBill.billMonth }}</el-descriptions-item>
@@ -167,10 +210,10 @@
         <el-descriptions-item label="请假天数">{{ currentBill.leaveDays || 0 }} 天</el-descriptions-item>
         <el-descriptions-item label="基础费用">¥{{ formatAmount(currentBill.baseFee) }}</el-descriptions-item>
       </el-descriptions>
-      <el-table :data="currentSubsidyDetails" style="margin-top: 16px" border>
+      <el-table :data="currentSubsidyDetails" style="margin-top: 16px" border class="fin-table">
         <el-table-column prop="policyName" label="补贴项目" />
         <el-table-column prop="amount" label="金额" width="120" align="right">
-          <template #default="{ row }">¥{{ Number(row.amount).toFixed(2) }}</template>
+          <template #default="{ row }"><span class="fin-amount">¥{{ Number(row.amount).toFixed(2) }}</span></template>
         </el-table-column>
         <el-table-column prop="calcDesc" label="计算说明" />
         <el-table-column label="拨付对象" width="100">
@@ -178,6 +221,7 @@
             <el-tag
               :type="row.payTarget === 'ORG' ? 'primary' : 'warning'"
               size="small"
+              class="fin-type-tag"
             >
               {{ row.payTarget === 'ORG' ? '机构' : '个人' }}
             </el-tag>
@@ -186,10 +230,10 @@
       </el-table>
       <div style="margin-top: 16px; text-align: right;">
         <span style="margin-right: 24px;">
-          家属应缴: <b style="color: #ff4d4f;">¥{{ formatAmount(currentBill.familyPayable) }}</b>
+          家属应缴: <b class="fin-amount expense">¥{{ formatAmount(currentBill.familyPayable) }}</b>
         </span>
         <span>
-          政府应拨: <b style="color: #fa8c16;">¥{{ formatAmount(currentBill.govPayable) }}</b>
+          政府应拨: <b class="fin-amount warning">¥{{ formatAmount(currentBill.govPayable) }}</b>
         </span>
       </div>
     </el-dialog>
@@ -199,6 +243,7 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Document, EditPen, CircleCheck, Check } from '@element-plus/icons-vue'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
 
@@ -229,6 +274,10 @@ const selectedConfirmedIds = ref([])
 const detailVisible = ref(false)
 const currentBill = ref({})
 const currentSubsidyDetails = ref([])
+
+const draftCount = computed(() => billList.value.filter(i => i.status === 'DRAFT').length)
+const confirmedCount = computed(() => billList.value.filter(i => i.status === 'CONFIRMED').length)
+const settledCount = computed(() => billList.value.filter(i => i.status === 'SETTLED').length)
 
 function formatAmount(amount) {
   if (amount === null || amount === undefined) return '0.00'
@@ -456,27 +505,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page {
+.fee-bill-page {
   padding: 16px;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.pager {
-  margin-top: 14px;
-  display: flex;
-  justify-content: flex-end;
 }
 </style>

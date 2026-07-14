@@ -1,106 +1,93 @@
 <template>
-  <div class="bank-account-page">
+  <div class="fin-page bank-account-page">
     <PageHeader title="银行账户">
       <template #actions>
-        <el-button type="primary" @click="showTransactionDialog = true">手动记账</el-button>
+        <el-button type="primary" @click="showTransactionDialog = true">
+          <el-icon><Plus /></el-icon> 手动记账
+        </el-button>
       </template>
     </PageHeader>
 
-    <!-- 顶部双账户概览卡片 -->
-    <el-row :gutter="16" style="margin-bottom: 20px">
-      <el-col :span="12">
-        <el-card shadow="hover" class="account-card basic-card">
-          <div class="account-header">
-            <span class="account-tag basic-tag">基本户</span>
-            <span class="account-name">{{ dashboard.basicAccountName || '-' }}</span>
+    <!-- 顶部双账户概览 - stat cards -->
+    <div class="fin-stat-row fin-stat-row-2" style="margin-bottom: 20px">
+      <!-- 基本户 -->
+      <div class="fin-stat-card info">
+        <div class="fin-stat-icon">
+          <el-icon :size="24"><CreditCard /></el-icon>
+        </div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">基本户 · {{ dashboard.basicAccountName || '-' }}</div>
+          <div class="fin-stat-value">¥ {{ formatMoney(dashboard.basicBalance) }}</div>
+          <div class="fin-stat-sub">
+            收入 ¥{{ formatMoney(dashboard.basicMonthlyIncome) }}　支出 ¥{{ formatMoney(dashboard.basicMonthlyExpense) }}
           </div>
-          <div class="account-info">
-            <div class="info-row">
-              <span class="info-label">账户余额</span>
-              <span class="info-value balance">¥ {{ formatMoney(dashboard.basicBalance) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">本月收入</span>
-              <span class="info-value income">¥ {{ formatMoney(dashboard.basicMonthlyIncome) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">本月支出</span>
-              <span class="info-value expense">¥ {{ formatMoney(dashboard.basicMonthlyExpense) }}</span>
-            </div>
+        </div>
+      </div>
+      <!-- 一般户 -->
+      <div class="fin-stat-card warning">
+        <div class="fin-stat-icon">
+          <el-icon :size="24"><Wallet /></el-icon>
+        </div>
+        <div class="fin-stat-body">
+          <div class="fin-stat-label">一般户 · {{ dashboard.generalAccountName || '-' }}</div>
+          <div class="fin-stat-value">¥ {{ formatMoney(dashboard.generalBalance) }}</div>
+          <div class="fin-stat-sub">
+            收入 ¥{{ formatMoney(dashboard.generalMonthlyIncome) }}　支出 ¥{{ formatMoney(dashboard.generalMonthlyExpense) }}
           </div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card shadow="hover" class="account-card general-card">
-          <div class="account-header">
-            <span class="account-tag general-tag">一般户</span>
-            <span class="account-name">{{ dashboard.generalAccountName || '-' }}</span>
-          </div>
-          <div class="account-info">
-            <div class="info-row">
-              <span class="info-label">账户余额</span>
-              <span class="info-value balance">¥ {{ formatMoney(dashboard.generalBalance) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">本月收入</span>
-              <span class="info-value income">¥ {{ formatMoney(dashboard.generalMonthlyIncome) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">本月支出</span>
-              <span class="info-value expense">¥ {{ formatMoney(dashboard.generalMonthlyExpense) }}</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </div>
+    </div>
 
     <!-- 月度收支趋势图 -->
-    <el-card shadow="hover" style="margin-bottom: 20px">
-      <template #header>
-        <div class="card-header">
-          <span>月度收支趋势（近6个月）</span>
-        </div>
-      </template>
-      <div ref="chartRef" style="height: 320px; width: 100%"></div>
-    </el-card>
+    <div class="fin-card">
+      <div class="fin-card-header">
+        <div class="fin-card-title">月度收支趋势（近6个月）</div>
+      </div>
+      <div class="fin-card-body">
+        <div ref="chartRef" style="height: 320px; width: 100%"></div>
+      </div>
+    </div>
 
     <!-- 流水表格 -->
-    <el-card shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span>交易流水</span>
-          <div class="header-actions">
-            <el-date-picker
-              v-model="dateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="width: 280px; margin-right: 12px"
-            />
-            <el-button @click="loadTransactions">查询</el-button>
-          </div>
+    <div class="fin-table-card" style="margin-top: 16px">
+      <div class="fin-table-card-header">
+        <div class="fin-table-card-header-left">
+          <span class="fin-table-card-title">交易流水</span>
+          <span class="fin-table-card-count">{{ transactionTotal }} 条</span>
         </div>
-      </template>
+        <div class="fin-card-actions">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 260px"
+          />
+          <el-button @click="loadTransactions">
+            <el-icon><Refresh /></el-icon> 查询
+          </el-button>
+        </div>
+      </div>
 
-      <el-tabs v-model="activeAccount" @tab-change="onAccountTabChange">
+      <el-tabs v-model="activeAccount" class="fin-tabs" @tab-change="onAccountTabChange">
         <el-tab-pane label="基本户流水" name="basic" />
         <el-tab-pane label="一般户流水" name="general" />
       </el-tabs>
 
-      <el-table :data="transactionList" border stripe v-loading="transactionLoading">
+      <el-table :data="transactionList" class="fin-table" v-loading="transactionLoading">
         <el-table-column prop="transactionDate" label="日期" width="120" />
         <el-table-column label="类型" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.transactionType === 'INCOME' ? 'success' : 'danger'" size="small">
+            <span :class="['fin-type-tag', row.transactionType === 'INCOME' ? 'el-tag el-tag--success' : 'el-tag el-tag--danger']">
               {{ row.transactionType === 'INCOME' ? '收入' : '支出' }}
-            </el-tag>
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="金额" width="140">
           <template #default="{ row }">
-            <span :style="{ color: row.transactionType === 'INCOME' ? '#67C23A' : '#F56C6C', fontWeight: 'bold' }">
+            <span :class="['fin-amount', row.transactionType === 'INCOME' ? 'income' : 'expense']">
               {{ row.transactionType === 'INCOME' ? '+' : '-' }}{{ formatMoney(row.amount) }}
             </span>
           </template>
@@ -115,7 +102,7 @@
         <el-table-column prop="receiptNo" label="回单号" width="160" />
       </el-table>
 
-      <div class="pager">
+      <div class="fin-pager">
         <el-pagination
           background
           layout="total, prev, pager, next, sizes"
@@ -127,42 +114,48 @@
           @update:page-size="(s) => { transactionPageSize = s; transactionPage = 1; loadTransactions() }"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 手动记账弹窗 -->
-    <el-dialog v-model="showTransactionDialog" title="手动记账" width="560px">
+    <el-dialog v-model="showTransactionDialog" title="手动记账" width="560px" class="fin-dialog">
       <el-form ref="transactionFormRef" :model="transactionForm" :rules="transactionRules" label-width="90px">
-        <el-form-item label="记账账户" prop="accountId">
-          <el-select v-model="transactionForm.accountId" placeholder="选择账户" style="width: 100%">
-            <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="交易类型" prop="transactionType">
-          <el-select v-model="transactionForm.transactionType" placeholder="选择类型" style="width: 100%">
-            <el-option label="收入" value="INCOME" />
-            <el-option label="支出" value="EXPENSE" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="金额" prop="amount">
-          <el-input-number v-model="transactionForm.amount" :min="0.01" :precision="2" :step="10" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="交易日期" prop="transactionDate">
-          <el-date-picker v-model="transactionForm.transactionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="对方户名" prop="counterparty">
-          <el-input v-model="transactionForm.counterparty" placeholder="可选" />
-        </el-form-item>
-        <el-form-item label="业务类型" prop="bizType">
-          <el-select v-model="transactionForm.bizType" placeholder="选择业务类型" style="width: 100%" clearable>
-            <el-option v-for="(label, key) in businessTypeMap" :key="key" :label="label" :value="key" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="摘要" prop="description">
-          <el-input v-model="transactionForm.description" type="textarea" :rows="2" placeholder="可选" />
-        </el-form-item>
-        <el-form-item label="回单号" prop="receiptNo">
-          <el-input v-model="transactionForm.receiptNo" placeholder="可选" />
-        </el-form-item>
+        <div class="fin-form-section">
+          <div class="fin-section-title">基本信息</div>
+          <el-form-item label="记账账户" prop="accountId">
+            <el-select v-model="transactionForm.accountId" placeholder="选择账户" style="width: 100%">
+              <el-option v-for="acc in bankAccounts" :key="acc.id" :label="`${acc.accountName} (${acc.accountType === 'BASIC' ? '基本户' : '一般户'})`" :value="acc.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="交易类型" prop="transactionType">
+            <el-select v-model="transactionForm.transactionType" placeholder="选择类型" style="width: 100%">
+              <el-option label="收入" value="INCOME" />
+              <el-option label="支出" value="EXPENSE" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="金额" prop="amount">
+            <el-input-number v-model="transactionForm.amount" :min="0.01" :precision="2" :step="10" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="交易日期" prop="transactionDate">
+            <el-date-picker v-model="transactionForm.transactionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+          </el-form-item>
+        </div>
+        <div class="fin-form-section">
+          <div class="fin-section-title">补充信息</div>
+          <el-form-item label="对方户名" prop="counterparty">
+            <el-input v-model="transactionForm.counterparty" placeholder="可选" />
+          </el-form-item>
+          <el-form-item label="业务类型" prop="bizType">
+            <el-select v-model="transactionForm.bizType" placeholder="选择业务类型" style="width: 100%" clearable>
+              <el-option v-for="(label, key) in businessTypeMap" :key="key" :label="label" :value="key" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="摘要" prop="description">
+            <el-input v-model="transactionForm.description" type="textarea" :rows="2" placeholder="可选" />
+          </el-form-item>
+          <el-form-item label="回单号" prop="receiptNo">
+            <el-input v-model="transactionForm.receiptNo" placeholder="可选" />
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="showTransactionDialog = false">取消</el-button>
@@ -175,6 +168,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { CreditCard, Wallet, Refresh, Plus } from '@element-plus/icons-vue'
 import { api as client } from '../../api/client'
 import PageHeader from '../../components/common/PageHeader.vue'
 import * as echarts from 'echarts'
@@ -405,104 +399,6 @@ onUnmounted(() => {
 
 <style scoped>
 .bank-account-page {
-  padding: 16px;
-}
-
-.account-card {
-  border-radius: 8px;
-}
-
-.account-card.basic-card {
-  border-top: 3px solid #409EFF;
-}
-
-.account-card.general-card {
-  border-top: 3px solid #E6A23C;
-}
-
-.account-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.account-tag {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.basic-tag {
-  background: #409EFF;
-}
-
-.general-tag {
-  background: #E6A23C;
-}
-
-.account-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.account-info {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.info-label {
-  font-size: 14px;
-  color: #909399;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #303133;
-  font-weight: 500;
-}
-
-.info-value.balance {
-  font-size: 22px;
-  font-weight: 700;
-  color: #303133;
-}
-
-.info-value.income {
-  color: #67C23A;
-}
-
-.info-value.expense {
-  color: #F56C6C;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-}
-
-.pager {
-  margin-top: 14px;
-  display: flex;
-  justify-content: flex-end;
+  /* page-specific overrides if needed */
 }
 </style>

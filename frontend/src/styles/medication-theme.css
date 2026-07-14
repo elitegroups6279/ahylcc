@@ -1,0 +1,1199 @@
+/* =========================================================
+   药物管理模块统一设计系统 (Medication Theme)
+   基于方案 B：现代仪表板风格
+   主色：Teal #2B7A78 / 医药蓝 #3B82F6
+   ========================================================= */
+
+/* ------------------- 页面容器 ------------------- */
+.med-page {
+  padding: 16px;
+  background: var(--color-bg-page, #F5F7FA);
+  min-height: 100%;
+}
+
+/* ------------------- 统计卡片 ------------------- */
+.med-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.med-stat-row-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.med-stat-row-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.med-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(43, 122, 120, 0.06);
+  border: 1px solid rgba(43, 122, 120, 0.08);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.med-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(43, 122, 120, 0.12);
+}
+
+.med-stat-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--med-card-accent, #2B7A78);
+}
+
+/* 卡片变体 */
+.med-stat-card.primary {
+  background: linear-gradient(135deg, #E8F4F4 0%, #ffffff 100%);
+  --med-card-accent: #2B7A78;
+}
+
+.med-stat-card.success {
+  background: linear-gradient(135deg, #F0F9F0 0%, #ffffff 100%);
+  --med-card-accent: #52C41A;
+}
+
+.med-stat-card.warning {
+  background: linear-gradient(135deg, #FFF8E6 0%, #ffffff 100%);
+  --med-card-accent: #E6A23C;
+}
+
+.med-stat-card.danger {
+  background: linear-gradient(135deg, #FDF2F2 0%, #ffffff 100%);
+  --med-card-accent: #F56C6C;
+}
+
+.med-stat-card.blue {
+  background: linear-gradient(135deg, #EFF6FF 0%, #ffffff 100%);
+  --med-card-accent: #3B82F6;
+}
+
+/* 统计图标 */
+.med-stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(43, 122, 120, 0.1);
+  color: #2B7A78;
+  font-size: 24px;
+}
+
+.med-stat-card.primary .med-stat-icon {
+  background: rgba(43, 122, 120, 0.12);
+  color: #2B7A78;
+}
+
+.med-stat-card.success .med-stat-icon {
+  background: rgba(82, 196, 26, 0.12);
+  color: #52C41A;
+}
+
+.med-stat-card.warning .med-stat-icon {
+  background: rgba(230, 162, 60, 0.12);
+  color: #E6A23C;
+}
+
+.med-stat-card.danger .med-stat-icon {
+  background: rgba(245, 108, 108, 0.12);
+  color: #F56C6C;
+}
+
+.med-stat-card.blue .med-stat-icon {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3B82F6;
+}
+
+/* 统计数值 */
+.med-stat-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.med-stat-label {
+  font-size: 14px;
+  color: #6B7280;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.med-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'DIN Alternate', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  letter-spacing: -0.5px;
+  color: #1F2937;
+  line-height: 1.2;
+}
+
+.med-stat-card.primary .med-stat-value {
+  color: #2B7A78;
+}
+
+.med-stat-card.success .med-stat-value {
+  color: #52C41A;
+}
+
+.med-stat-card.warning .med-stat-value {
+  color: #E6A23C;
+}
+
+.med-stat-card.danger .med-stat-value {
+  color: #F56C6C;
+}
+
+.med-stat-card.blue .med-stat-value {
+  color: #3B82F6;
+}
+
+.med-stat-sub {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-top: 4px;
+}
+
+/* ------------------- 视图切换器 (Pill Switcher) ------------------- */
+.med-switcher {
+  display: inline-flex;
+  background: #F0F0F0;
+  border-radius: 24px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.med-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 24px;
+  border: none;
+  background: transparent;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.med-switcher-btn:hover {
+  color: #1F2937;
+}
+
+.med-switcher-btn.active {
+  background: #2B7A78;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(43, 122, 120, 0.3);
+  font-weight: 600;
+}
+
+.med-switcher-btn .el-icon {
+  font-size: 14px;
+}
+
+/* ------------------- 筛选工具栏 ------------------- */
+.med-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #E5E7EB;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.med-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.med-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ------------------- 卡片容器 ------------------- */
+.med-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #E5E7EB;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.med-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E7EB;
+  background: #FAFBFC;
+}
+
+.med-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.med-card-title::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: #2B7A78;
+  border-radius: 2px;
+}
+
+.med-card-body {
+  padding: 20px;
+}
+
+.med-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ------------------- 表格容器 ------------------- */
+.med-table-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #E5E7EB;
+  overflow: hidden;
+}
+
+.med-table-card .med-table-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E7EB;
+  background: #F0F8F8;
+}
+
+.med-table-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.med-table-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+}
+
+.med-table-card-count {
+  font-size: 13px;
+  color: #6B7280;
+  background: #E5E7EB;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.med-table {
+  border: none;
+}
+
+.med-table :deep(.el-table__header-wrapper th.el-table__cell) {
+  background: #F0F8F8 !important;
+  color: #374151;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid #E5E7EB;
+  padding: 14px 12px;
+}
+
+.med-table :deep(.el-table__body-wrapper td.el-table__cell) {
+  padding: 14px 12px;
+  color: #4B5563;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.med-table :deep(.el-table__row:hover > td.el-table__cell) {
+  background: #F9FAFB !important;
+}
+
+.med-table :deep(.el-table__body tr:last-child td.el-table__cell) {
+  border-bottom: none;
+}
+
+/* ------------------- 金额/数值样式 ------------------- */
+.med-amount {
+  font-weight: 700;
+  font-family: 'DIN Alternate', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  font-size: 15px;
+}
+
+.med-amount.primary {
+  color: #2B7A78;
+}
+
+.med-amount.success {
+  color: #52C41A;
+}
+
+.med-amount.warning {
+  color: #E6A23C;
+}
+
+.med-amount.danger {
+  color: #F56C6C;
+}
+
+.med-amount.blue {
+  color: #3B82F6;
+}
+
+.med-amount.bold {
+  font-size: 16px;
+}
+
+/* ------------------- 药品标签/Pill ------------------- */
+.med-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.med-pill.teal {
+  background: rgba(43, 122, 120, 0.12);
+  color: #2B7A78;
+}
+
+.med-pill.blue {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3B82F6;
+}
+
+.med-pill.green {
+  background: rgba(82, 196, 26, 0.12);
+  color: #52C41A;
+}
+
+.med-pill.orange {
+  background: rgba(230, 162, 60, 0.12);
+  color: #E6A23C;
+}
+
+.med-pill.red {
+  background: rgba(245, 108, 108, 0.12);
+  color: #F56C6C;
+}
+
+.med-pill.gray {
+  background: rgba(107, 114, 128, 0.12);
+  color: #6B7280;
+}
+
+/* ------------------- 分页器 ------------------- */
+.med-pager {
+  padding: 14px 20px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #E5E7EB;
+  background: #FAFBFC;
+}
+
+/* ------------------- 对话框 ------------------- */
+.med-dialog .el-dialog__header {
+  border-bottom: 1px solid #E5E7EB;
+  padding: 16px 20px;
+  margin-right: 0;
+}
+
+.med-dialog .el-dialog__title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1F2937;
+}
+
+.med-dialog .el-dialog__body {
+  padding: 20px;
+}
+
+.med-dialog .el-dialog__footer {
+  border-top: 1px solid #E5E7EB;
+  padding: 12px 20px;
+}
+
+/* ------------------- 表单分区 ------------------- */
+.med-form-section {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #E5E7EB;
+}
+
+.med-form-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.med-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.med-section-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: #2B7A78;
+  border-radius: 2px;
+}
+
+/* ------------------- Tab 样式覆盖 ------------------- */
+.med-tabs.el-tabs--top .el-tabs__header {
+  margin-bottom: 0;
+  border-bottom: 1px solid #E5E7EB;
+  background: #F0F8F8;
+  padding: 0 20px;
+}
+
+.med-tabs.el-tabs--top .el-tabs__item {
+  height: 46px;
+  line-height: 46px;
+  font-size: 14px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.med-tabs.el-tabs--top .el-tabs__item.is-active {
+  color: #2B7A78;
+  font-weight: 600;
+}
+
+.med-tabs.el-tabs--top .el-tabs__active-bar {
+  background: #2B7A78;
+  height: 3px;
+}
+
+/* ------------------- 老人用药卡片 ------------------- */
+.med-elderly-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid #E5E7EB;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.med-elderly-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(43, 122, 120, 0.1);
+}
+
+.med-elderly-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #E5E7EB;
+  position: relative;
+  overflow: hidden;
+}
+
+.med-elderly-card-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #2B7A78;
+}
+
+.med-elderly-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.med-elderly-card-room {
+  font-size: 13px;
+  color: #6B7280;
+  background: rgba(43, 122, 120, 0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.med-elderly-card-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.med-elderly-card-body {
+  padding: 16px 18px;
+}
+
+/* ------------------- 时段行 (Slot Row) ------------------- */
+.med-slot-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.med-slot-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.med-slot-label-col {
+  width: 80px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.med-slot-label {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.med-slot-label.morning {
+  background: rgba(230, 162, 60, 0.1);
+  color: #E6A23C;
+}
+
+.med-slot-label.afternoon {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
+}
+
+.med-slot-label.evening {
+  background: rgba(114, 46, 209, 0.1);
+  color: #722ED1;
+}
+
+.med-slot-label.bedtime {
+  background: rgba(43, 122, 120, 0.1);
+  color: #2B7A78;
+}
+
+.med-slot-records-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ------------------- 药品条目 ------------------- */
+.med-drug-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #F9FAFB;
+  transition: background 0.2s;
+}
+
+.med-drug-item:hover {
+  background: #F0F8F8;
+}
+
+.med-drug-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1F2937;
+}
+
+.med-drug-dosage {
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.med-drug-status {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+/* ------------------- A4 导出预览 ------------------- */
+.med-export-preview {
+  background: #F5F7FA;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.med-export-page {
+  width: 210mm;
+  min-height: 297mm;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 20mm 15mm;
+  font-size: 12px;
+  color: #333;
+}
+
+.med-export-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.med-export-institution {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 4px;
+}
+
+.med-export-title {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.med-export-divider {
+  height: 2px;
+  background: #2B7A78;
+  margin-bottom: 12px;
+}
+
+.med-export-filter-info {
+  font-size: 11px;
+  color: #6B7280;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.med-export-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 16px;
+  padding: 10px 0;
+  border-top: 1px solid #E5E7EB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.med-export-stats-item {
+  text-align: center;
+}
+
+.med-export-stats-label {
+  font-size: 11px;
+  color: #6B7280;
+  margin-bottom: 4px;
+}
+
+.med-export-stats-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'DIN Alternate', 'Helvetica Neue', 'Segoe UI', sans-serif;
+  color: #2B7A78;
+}
+
+.med-export-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.med-export-table th {
+  background: #F0F8F8;
+  color: #374151;
+  font-weight: 600;
+  padding: 8px 6px;
+  border: 1px solid #D1D5DB;
+  text-align: center;
+}
+
+.med-export-table td {
+  padding: 6px;
+  border: 1px solid #D1D5DB;
+  color: #4B5563;
+  text-align: center;
+}
+
+.med-export-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20mm;
+  font-size: 10px;
+  color: #9CA3AF;
+}
+
+/* =========================================================
+   打印视图 (每日用药报表 - 新)
+   ========================================================= */
+.med-print-view {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: #C0C4CC;
+  display: flex;
+  flex-direction: column;
+}
+
+.med-print-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #D1D5DB;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.med-print-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.med-print-toolbar h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+}
+
+.med-print-toolbar-hint {
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.med-print-toolbar-right {
+  display: flex;
+  gap: 10px;
+}
+
+.med-print-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 屏幕预览: A4 尺寸 */
+.med-print-area {
+  width: 180mm;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  padding: 15mm;
+  font-size: 12px;
+  color: #333;
+  min-height: 257mm;
+}
+
+/* 报表头 */
+.med-print-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.med-print-institution {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 4px;
+}
+
+.med-print-title {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.med-print-divider {
+  height: 2px;
+  background: #2B7A78;
+  margin-bottom: 10px;
+}
+
+.med-print-filter-row {
+  font-size: 11px;
+  color: #6B7280;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.med-print-stats {
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  margin-bottom: 14px;
+  border-top: 1px solid #E5E7EB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.med-print-stat-item {
+  text-align: center;
+}
+
+.med-print-stat-label {
+  font-size: 11px;
+  color: #6B7280;
+  margin-bottom: 4px;
+}
+
+.med-print-stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2B7A78;
+}
+
+.med-print-empty {
+  text-align: center;
+  padding: 60px 0;
+  color: #9CA3AF;
+  font-size: 14px;
+}
+
+/* 打印报表表格 */
+.med-print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.med-print-table thead th {
+  background: #F0F8F8;
+  color: #374151;
+  font-weight: 600;
+  padding: 7px 5px;
+  border: 1px solid #D1D5DB;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.med-print-table tbody td {
+  padding: 5px 5px;
+  border: 1px solid #D1D5DB;
+  color: #4B5563;
+  vertical-align: middle;
+}
+
+.med-print-table tbody tr:nth-child(even) td {
+  background: #FAFBFC;
+}
+
+.med-print-tc {
+  text-align: center !important;
+}
+
+/* 打印状态标签 */
+.med-print-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* 打印页脚 (仅屏幕预览显示) */
+.med-print-footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 10px;
+  color: #9CA3AF;
+}
+
+/* ------------------- @page 指令 (A4 纸张) ------------------- */
+@page {
+  size: A4;
+  margin: 15mm;
+}
+
+/* ------------------- 打印样式 ------------------- */
+@media print {
+  /* 隐藏所有页面 UI，仅显示打印报表 */
+  html, body {
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0;
+  }
+
+  body > * {
+    visibility: hidden !important;
+  }
+
+  .med-print-view {
+    visibility: visible !important;
+    position: static !important;
+    background: none !important;
+    z-index: auto !important;
+  }
+
+  .med-print-view * {
+    visibility: visible !important;
+  }
+
+  /* 隐藏打印工具栏和页脚(仅屏幕显示) */
+  .no-print,
+  .med-print-toolbar,
+  .med-print-footer {
+    display: none !important;
+  }
+
+  /* 全宽打印,移除预览容器限制 */
+  .med-print-scroll {
+    overflow: visible !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .med-print-area {
+    width: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    min-height: auto !important;
+  }
+
+  /* 表头在每页自动重复 (浏览器内置行为) */
+  .med-print-table thead {
+    display: table-header-group;
+  }
+
+  /* 避免行内分页 */
+  .med-print-table tr {
+    page-break-inside: avoid;
+  }
+
+  /* 打印时加深表格边框 */
+  .med-print-table th,
+  .med-print-table td {
+    border: 1px solid #999 !important;
+  }
+
+  .med-print-table tbody tr:nth-child(even) td {
+    background: none !important;
+  }
+}
+
+/* ------------------- 响应式 ------------------- */
+@media (max-width: 1200px) {
+  .med-stat-row,
+  .med-stat-row-4,
+  .med-stat-row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .med-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .med-filter-right {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .med-page {
+    padding: 12px;
+  }
+
+  .med-stat-card {
+    padding: 18px 16px;
+  }
+
+  .med-stat-value {
+    font-size: 22px;
+  }
+
+  .med-filter-left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .med-filter-left > * {
+    width: 100% !important;
+  }
+
+  .med-elderly-card-body {
+    padding: 12px;
+  }
+
+  .med-slot-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .med-slot-label-col {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+/* ------------------- 每日报表导出卡片 ------------------- */
+.daily-export-card {
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  break-inside: avoid;
+}
+
+.daily-export-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #F0F8F8;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.daily-export-elderly-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.daily-export-elderly-meta {
+  font-size: 11px;
+  color: #6B7280;
+  flex: 1;
+}
+
+.daily-export-status-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.pill-green {
+  background: rgba(82, 196, 26, 0.12);
+  color: #52C41A;
+}
+
+.pill-blue {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3B82F6;
+}
+
+.pill-red {
+  background: rgba(245, 108, 108, 0.12);
+  color: #F56C6C;
+}
+
+.pill-gray {
+  background: rgba(107, 114, 128, 0.12);
+  color: #6B7280;
+}
+
+.daily-export-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.daily-export-table thead th {
+  background: #FAFBFC;
+  color: #6B7280;
+  font-weight: 600;
+  padding: 7px 8px;
+  border-bottom: 1px solid #E5E7EB;
+  text-align: left;
+}
+
+.daily-export-table tbody td {
+  padding: 6px 8px;
+  color: #374151;
+  border-bottom: 1px solid #F3F4F6;
+  vertical-align: top;
+}
+
+.daily-export-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.daily-export-slot-cell {
+  font-weight: 600;
+  color: #2B7A78;
+  background: #F0F8F8;
+  text-align: center;
+  vertical-align: middle !important;
+}
+
+.daily-export-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.st-done {
+  background: rgba(82, 196, 26, 0.12);
+  color: #52C41A;
+}
+
+.st-pending {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3B82F6;
+}
+
+.st-skipped {
+  background: rgba(107, 114, 128, 0.12);
+  color: #6B7280;
+}
+
+.st-missed {
+  background: rgba(245, 108, 108, 0.12);
+  color: #F56C6C;
+}
+
+.st-refused {
+  background: rgba(230, 162, 60, 0.12);
+  color: #E6A23C;
+}

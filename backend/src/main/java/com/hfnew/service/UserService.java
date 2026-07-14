@@ -285,4 +285,51 @@ public class UserService {
 
         return vo;
     }
+
+    /**
+     * 根据业务类型获取审批人列表
+     * bizType: REIMBURSEMENT / PURCHASE / OUTBOUND
+     * 查询有对应审批权限的用户
+     */
+    public List<AccountVO> listApprovers(String bizType) {
+        String permissionCode;
+        switch (bizType) {
+            case "REIMBURSEMENT":
+                permissionCode = "finance:reimbursement:approve";
+                break;
+            case "PURCHASE":
+                permissionCode = "warehouse:purchase:approve";
+                break;
+            case "OUTBOUND":
+                permissionCode = "warehouse:outbound:approve";
+                break;
+            default:
+                permissionCode = bizType + ":approve";
+        }
+
+        // 通过JdbcTemplate查询有该权限的用户
+        // 查找拥有包含该权限的角色的所有活跃用户
+        String sql = """
+            SELECT DISTINCT u.id, u.username, u.real_name, u.phone, u.org_id
+            FROM t_user u
+            JOIN t_user_role ur ON ur.user_id = u.id
+            JOIN t_role r ON r.id = ur.role_id
+            JOIN t_role_menu rm ON rm.role_id = r.id
+            JOIN t_menu m ON m.id = rm.menu_id
+            WHERE u.deleted = 0 AND u.status = 1 AND r.deleted = 0
+            AND (m.permission = ? OR m.permission = '*')
+            """;
+
+        List<AccountVO> approvers = jdbcTemplate.query(sql, (rs, rowNum) -> {
+            AccountVO vo = new AccountVO();
+            vo.setId(rs.getLong("id"));
+            vo.setUsername(rs.getString("username"));
+            vo.setRealName(rs.getString("real_name"));
+            vo.setPhone(rs.getString("phone"));
+            vo.setOrgId(rs.getObject("org_id") != null ? rs.getLong("org_id") : null);
+            return vo;
+        }, permissionCode);
+
+        return approvers;
+    }
 }

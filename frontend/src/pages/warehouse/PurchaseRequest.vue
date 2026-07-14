@@ -26,7 +26,7 @@
           <template #default="{ row }">{{ supplyCategoryLabel(row.supplyCategory) }}</template>
         </el-table-column>
         <el-table-column label="总金额" width="140">
-          <template #default="{ row }">￥{{ formatAmount(row.totalAmount) }}</template>
+          <template #default="{ row }">￥{{ formatMoney(row.totalAmount) }}</template>
         </el-table-column>
         <el-table-column label="审批状态" width="120">
           <template #default="{ row }">
@@ -83,7 +83,7 @@
             <el-option
               v-for="a in allocationOptions"
               :key="a.id"
-              :label="`${a.allocateMonth} - ￥${formatAmount(a.totalAmount)}`"
+              :label="`${a.allocateMonth} - ￥${formatMoney(a.totalAmount)}`"
               :value="a.id"
             />
           </el-select>
@@ -132,7 +132,7 @@
                 </template>
               </el-table-column>
               <el-table-column label="小计" width="120">
-                <template #default="{ row }">￥{{ formatAmount(row.quantity * row.unitPrice) }}</template>
+                <template #default="{ row }">￥{{ formatMoney(row.quantity * row.unitPrice) }}</template>
               </el-table-column>
               <el-table-column label="操作" width="90">
                 <template #default="{ $index }">
@@ -140,7 +140,7 @@
                 </template>
               </el-table-column>
             </el-table>
-            <div class="total-row">合计金额：￥{{ formatAmount(totalAmount) }}</div>
+            <div class="total-row">合计金额：￥{{ formatMoney(totalAmount) }}</div>
           </div>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
@@ -160,7 +160,7 @@
           <span>{{ currentRow?.requestNo }}</span>
         </el-form-item>
         <el-form-item label="总金额">
-          <span>￥{{ formatAmount(currentRow?.totalAmount) }}</span>
+          <span>￥{{ formatMoney(currentRow?.totalAmount) }}</span>
         </el-form-item>
         <el-form-item label="备注">
           <el-input
@@ -185,7 +185,7 @@
         <el-descriptions-item label="申请编号">{{ currentRow?.requestNo }}</el-descriptions-item>
         <el-descriptions-item label="申请人">{{ currentRow?.applicantName }}</el-descriptions-item>
         <el-descriptions-item label="供应类别">{{ supplyCategoryLabel(currentRow?.supplyCategory) }}</el-descriptions-item>
-        <el-descriptions-item label="总金额">￥{{ formatAmount(currentRow?.totalAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="总金额">￥{{ formatMoney(currentRow?.totalAmount) }}</el-descriptions-item>
         <el-descriptions-item label="审批状态">
           <el-tag v-if="currentRow?.approvalStatus === 'PENDING'" type="warning">待审批</el-tag>
           <el-tag v-else-if="currentRow?.approvalStatus === 'APPROVED'" type="success">已通过</el-tag>
@@ -199,10 +199,10 @@
         <el-table-column prop="materialName" label="物资" min-width="180" />
         <el-table-column prop="quantity" label="数量" width="100" />
         <el-table-column label="单价" width="120">
-          <template #default="{ row }">￥{{ formatAmount(row.unitPrice) }}</template>
+          <template #default="{ row }">￥{{ formatMoney(row.unitPrice) }}</template>
         </el-table-column>
         <el-table-column label="小计" width="120">
-          <template #default="{ row }">￥{{ formatAmount(row.subtotal) }}</template>
+          <template #default="{ row }">￥{{ formatMoney(row.subtotal) }}</template>
         </el-table-column>
       </el-table>
     </el-dialog>
@@ -214,6 +214,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { api } from '../../api/client'
+import { useFormat } from '@/composables/useFormat'
+
+const { formatMoney, supplyCategoryLabel } = useFormat()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -257,19 +260,6 @@ const detailItems = ref([])
 const totalAmount = computed(() => {
   return form.items.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0), 0)
 })
-
-function formatAmount(amount) {
-  if (amount === null || amount === undefined) return '0.00'
-  const n = Number(amount)
-  if (Number.isNaN(n)) return String(amount)
-  return n.toFixed(2)
-}
-
-function supplyCategoryLabel(cat) {
-  if (cat === 'CENTRALIZED') return '集中供养物资'
-  if (cat === 'SOCIAL') return '社会化物资'
-  return cat || '-'
-}
 
 async function fetchList() {
   loading.value = true

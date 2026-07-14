@@ -371,10 +371,10 @@ public class ElderlyService {
         // ACTIVE和ON_LEAVE状态都包含（请假只是暂离，仍然是在住老人）
         String baseSql = "SELECT id, name, unique_no FROM t_elderly WHERE deleted = 0 AND (status = 'ACTIVE' OR status = 'ON_LEAVE')";
         if (StringUtils.hasText(keyword)) {
-            String sql = baseSql + " AND (name LIKE ? OR unique_no LIKE ?) ORDER BY id DESC LIMIT 50";
+            String sql = baseSql + " AND (name LIKE ? OR unique_no LIKE ?) ORDER BY id DESC";
             return jdbcTemplate.queryForList(sql, "%" + keyword + "%", "%" + keyword + "%");
         }
-        String sql = baseSql + " ORDER BY id DESC LIMIT 50";
+        String sql = baseSql + " ORDER BY id DESC";
         return jdbcTemplate.queryForList(sql);
     }
 

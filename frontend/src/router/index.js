@@ -197,7 +197,7 @@ const routes = [
         path: 'warehouse/fund-dashboard',
         name: 'FundDashboard',
         component: () => import('../pages/warehouse/FundDashboard.vue'),
-        meta: { title: '资金看板', permission: 'warehouse:stock', parent: '仓库管理', requiresAuth: true }
+        meta: { title: '资金看板', permission: 'warehouse:fund', parent: '仓库管理', requiresAuth: true }
       },
       {
         path: 'warehouse/budget',
@@ -215,13 +215,13 @@ const routes = [
         path: 'warehouse/consumption-trend',
         name: 'ConsumptionTrend',
         component: () => import('../pages/warehouse/ConsumptionTrend.vue'),
-        meta: { title: '消耗趋势', permission: 'warehouse:stock', parent: '仓库管理', requiresAuth: true }
+        meta: { title: '消耗趋势', permission: 'warehouse:trend', parent: '仓库管理', requiresAuth: true }
       },
       {
         path: 'warehouse/alerts',
         name: 'WarehouseAlerts',
         component: () => import('../pages/warehouse/WarehouseAlerts.vue'),
-        meta: { title: '预警中心', permission: 'warehouse:stock', parent: '仓库管理', requiresAuth: true }
+        meta: { title: '预警中心', permission: 'warehouse:alerts', parent: '仓库管理', requiresAuth: true }
       },
       // 药物管理
       {
@@ -235,6 +235,24 @@ const routes = [
         name: 'Dispense',
         component: () => import('../pages/pharmacy/Dispense.vue'),
         meta: { title: '发药管理', permission: 'pharmacy:dispense', parent: '药物管理', requiresAuth: true }
+      },
+      {
+        path: 'pharmacy/medication-dashboard',
+        name: 'MedicationDashboard',
+        component: () => import('../pages/pharmacy/MedicationDashboard.vue'),
+        meta: { title: '今日用药执行', permission: 'pharmacy:medication', parent: '药物管理', requiresAuth: true }
+      },
+      {
+        path: 'pharmacy/medication-plans',
+        name: 'MedicationPlan',
+        component: () => import('../pages/pharmacy/MedicationPlan.vue'),
+        meta: { title: '用药计划', permission: 'pharmacy:medication', parent: '药物管理', requiresAuth: true }
+      },
+      {
+        path: 'pharmacy/medication-records',
+        name: 'MedicationRecord',
+        component: () => import('../pages/pharmacy/MedicationRecord.vue'),
+        meta: { title: '用药记录', permission: 'pharmacy:medication', parent: '药物管理', requiresAuth: true }
       },
       // 上门服务
       {

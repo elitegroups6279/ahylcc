@@ -21,6 +21,7 @@ public class PurchaseReceiptController {
 
     private final PurchaseReceiptService purchaseReceiptService;
 
+    @PreAuthorize("hasAuthority('warehouse:purchase')")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PurchaseReceipt>>> list(
             @RequestParam(defaultValue = "1") int page,

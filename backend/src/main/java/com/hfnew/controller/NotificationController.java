@@ -7,6 +7,7 @@ import com.hfnew.dto.notify.ReimbursementNoticeItem;
 import com.hfnew.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,6 +40,7 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(notificationService.listPendingReimbursements(limit)));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/leaves")
     public ResponseEntity<ApiResponse<List<LeaveNoticeItem>>> leaves(
             @RequestParam(defaultValue = "10") int limit) {

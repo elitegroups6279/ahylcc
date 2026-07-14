@@ -23,6 +23,7 @@ public class ExpenseController {
     private final ExpenseRecordService expenseRecordService;
 
     @GetMapping("/api/finance/expenses")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResult<ExpenseVO>>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -35,6 +36,7 @@ public class ExpenseController {
     }
 
     @PostMapping("/api/finance/expenses")
+    @PreAuthorize("isAuthenticated()")
     @OpLog(module = "收支管理", operation = "登记支出")
     public ResponseEntity<ApiResponse<Long>> create(@RequestBody ExpenseCreateRequest request) {
         Long id = expenseRecordService.create(getCurrentUserId(), request);
@@ -58,6 +60,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/api/finance/cashflow/summary")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> summary(@RequestParam(required = false) String month) {
         return ResponseEntity.ok(ApiResponse.success(expenseRecordService.getCashflowSummary(month)));
     }

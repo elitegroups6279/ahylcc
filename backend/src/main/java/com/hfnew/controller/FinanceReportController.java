@@ -8,6 +8,7 @@ import com.hfnew.dto.finance.WubaoUsageReportVO;
 import com.hfnew.service.FinanceReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,6 +36,7 @@ public class FinanceReportController {
         return ResponseEntity.ok(ApiResponse.success(financeReportService.wubaoUsage(month)));
     }
 
+    @PreAuthorize("hasAuthority('report:export')")
     @GetMapping("/fund-flow")
     @OpLog(module = "财务报表", operation = "资金流向")
     public ResponseEntity<ApiResponse<FundFlowSummaryVO>> fundFlow(

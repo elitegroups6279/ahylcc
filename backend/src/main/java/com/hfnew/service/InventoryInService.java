@@ -83,10 +83,12 @@ public class InventoryInService {
         in.setRemark(request.getRemark());
         in.setSupplyCategory(request.getSupplyCategory() != null ? request.getSupplyCategory() : "SOCIAL");
         in.setAllocationId(request.getAllocationId());
+        in.setInMode(request.getInMode() != null ? request.getInMode() : "DIRECT");
+        in.setPurchaseReceiptId(request.getPurchaseReceiptId());
         inventoryInMapper.insert(in);
 
-        if (in.getAllocationId() != null && in.getTotalAmount() != null) {
-            // Update budget used_amount
+        // 预算联动：所有CENTRALIZED入库都更新预算usedAmount（不仅限于有allocationId的）
+        if ("CENTRALIZED".equals(in.getSupplyCategory()) && in.getTotalAmount() != null) {
             Budget budget = budgetService.getCurrentBudget(in.getSupplyCategory());
             if (budget != null) {
                 budget.setUsedAmount(budget.getUsedAmount().add(in.getTotalAmount()));

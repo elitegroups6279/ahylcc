@@ -44,7 +44,7 @@
             <el-table-column prop="category" label="类别" min-width="120" />
             <el-table-column prop="totalQuantity" label="数量" width="90" />
             <el-table-column prop="totalAmount" label="金额" width="130">
-              <template #default="{ row }">{{ formatMoney(row.totalAmount) }}</template>
+              <template #default="{ row }">¥{{ formatMoney(row.totalAmount) }}</template>
             </el-table-column>
           </el-table>
         </el-card>
@@ -60,6 +60,9 @@ import { Money, ShoppingCart, Goods, Wallet, Warning, DataAnalysis } from '@elem
 import PageHeader from '../../components/common/PageHeader.vue'
 import StatsCardGroup from '../../components/common/StatsCardGroup.vue'
 import { api } from '../../api/client'
+import { useFormat } from '@/composables/useFormat'
+
+const { formatMoney } = useFormat()
 
 const loadingSummary = ref(false)
 const loadingAlerts = ref(false)
@@ -78,36 +81,29 @@ const trend = ref([])
 const statsItems = computed(() => [
   {
     label: '当月拨款总额',
-    value: formatMoney(summary.value.monthlyAllocation),
+    value: '¥' + formatMoney(summary.value.monthlyAllocation),
     icon: Money,
     gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
   },
   {
     label: '已采购金额',
-    value: formatMoney(summary.value.purchasedAmount),
+    value: '¥' + formatMoney(summary.value.purchasedAmount),
     icon: ShoppingCart,
     gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
   },
   {
     label: '已领用金额',
-    value: formatMoney(summary.value.issuedAmount),
+    value: '¥' + formatMoney(summary.value.issuedAmount),
     icon: Goods,
     gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
   },
   {
     label: '剩余可用',
-    value: formatMoney(summary.value.remainingBalance),
+    value: '¥' + formatMoney(summary.value.remainingBalance),
     icon: Wallet,
     gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
   }
 ])
-
-function formatMoney(val) {
-  if (val === null || val === undefined) return '¥0.00'
-  const n = Number(val)
-  if (Number.isNaN(n)) return '¥' + String(val)
-  return '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
 
 function levelTagType(level) {
   const l = String(level).toLowerCase()

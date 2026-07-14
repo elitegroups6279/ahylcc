@@ -25,10 +25,10 @@
         <el-table-column prop="purchaseOrderNo" label="采购单号" width="140" />
         <el-table-column prop="quantity" label="数量" width="100" />
         <el-table-column prop="unitPrice" label="单价" width="120">
-          <template #default="{ row }">￥{{ formatAmount(row.unitPrice) }}</template>
+          <template #default="{ row }">￥{{ formatMoney(row.unitPrice) }}</template>
         </el-table-column>
         <el-table-column prop="totalAmount" label="总金额" width="120">
-          <template #default="{ row }">￥{{ formatAmount(row.totalAmount) }}</template>
+          <template #default="{ row }">￥{{ formatMoney(row.totalAmount) }}</template>
         </el-table-column>
         <el-table-column prop="inDate" label="入库日期" width="140" />
         <el-table-column prop="supplyCategory" label="供应类别" width="140">
@@ -67,6 +67,29 @@
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '修改入库' : '新增入库'" width="640px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
+        <el-form-item v-if="!editingId" label="入库模式" prop="inMode">
+          <el-radio-group v-model="form.inMode" @change="onInModeChange">
+            <el-radio value="DIRECT">直接入库</el-radio>
+            <el-radio value="FROM_PURCHASE">从采购单入库</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="!editingId && form.inMode === 'FROM_PURCHASE'" label="采购申请" prop="purchaseRequestId">
+          <el-select
+            v-model="form.purchaseRequestId"
+            filterable
+            :loading="prLoading"
+            placeholder="选择已验收通过的采购申请"
+            style="width: 100%"
+            @change="onPurchaseRequestSelect"
+          >
+            <el-option
+              v-for="pr in readyPurchaseRequests"
+              :key="pr.id"
+              :label="`${pr.requestNo} - ￥${formatMoney(pr.totalAmount)} (${supplyCategoryLabel(pr.supplyCategory)})`"
+              :value="pr.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="物资" prop="materialId">
           <el-select
             v-model="form.materialId"
@@ -75,6 +98,7 @@
             clearable
             :remote-method="searchMaterials"
             :loading="materialLoading"
+            :disabled="form.inMode === 'FROM_PURCHASE'"
             placeholder="请选择物资"
             style="width: 100%"
           >
@@ -127,7 +151,7 @@
             <el-option
               v-for="a in allocationOptions"
               :key="a.id"
-              :label="`${a.allocateMonth} - ¥${formatAmount(a.totalAmount)}`"
+              :label="`${a.allocateMonth} - ¥${formatMoney(a.totalAmount)}`"
               :value="a.id"
             />
           </el-select>
@@ -159,6 +183,9 @@ import { Edit, Delete } from '@element-plus/icons-vue'
 import { api } from '../../api/client'
 import PageHeader from '../../components/common/PageHeader.vue'
 import { useAuthStore } from '../../store/auth'
+import { useFormat } from '@/composables/useFormat'
+
+const { formatMoney, supplyCategoryLabel } = useFormat()
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => {
@@ -189,7 +216,10 @@ const form = reactive({
   remark: '',
   syncExpense: false,
   bankAccountId: null,
-  allocationId: null
+  allocationId: null,
+  inMode: 'DIRECT',
+  purchaseRequestId: null,
+  purchaseReceiptId: null
 })
 
 const rules = {
@@ -204,19 +234,9 @@ const allocationLoading = ref(false)
 const allocationOptions = ref([])
 const supplierLoading = ref(false)
 const supplierOptions = ref([])
-
-function formatAmount(amount) {
-  if (amount === null || amount === undefined) return '0.00'
-  const n = Number(amount)
-  if (Number.isNaN(n)) return String(amount)
-  return n.toFixed(2)
-}
-
-function supplyCategoryLabel(cat) {
-  if (cat === 'CENTRALIZED') return '集中供养物资'
-  if (cat === 'SOCIAL') return '社会化物资'
-  return cat || '社会化物资'
-}
+const prLoading = ref(false)
+const readyPurchaseRequests = ref([])
+const selectedPurchaseRequest = ref(null)
 
 async function loadBankAccounts() {
   try {
@@ -257,6 +277,73 @@ async function loadSuppliers() {
     supplierOptions.value = []
   } finally {
     supplierLoading.value = false
+  }
+}
+
+async function loadReadyPurchaseRequests() {
+  prLoading.value = true
+  try {
+    const resp = await api.get('/api/purchase-request/ready-for-inbound')
+    const body = resp.data
+    if (body.code === 200) readyPurchaseRequests.value = body.data || []
+    else readyPurchaseRequests.value = []
+  } catch (e) {
+    console.warn('加载可入库采购申请失败', e)
+    readyPurchaseRequests.value = []
+  } finally {
+    prLoading.value = false
+  }
+}
+
+function onInModeChange(mode) {
+  if (mode === 'FROM_PURCHASE') {
+    form.purchaseRequestId = null
+    form.supplyCategory = 'SOCIAL'
+    selectedPurchaseRequest.value = null
+    loadReadyPurchaseRequests()
+  } else {
+    form.purchaseRequestId = null
+    selectedPurchaseRequest.value = null
+    form.supplyCategory = 'SOCIAL'
+  }
+}
+
+function onPurchaseRequestSelect(prId) {
+  const pr = readyPurchaseRequests.value.find(x => x.id === prId)
+  if (!pr) return
+  selectedPurchaseRequest.value = pr
+  // 自动填充采购单数据
+  try {
+    const items = JSON.parse(pr.itemsJson || '[]')
+    if (items.length > 0) {
+      // 取第一条物资明细自动填充（如有多条则后续可逐条入库）
+      const firstItem = items[0]
+      form.materialId = firstItem.materialId || null
+      form.quantity = firstItem.quantity || 1
+      form.unitPrice = firstItem.unitPrice || 0
+      form.totalAmount = firstItem.subtotal || (firstItem.quantity * firstItem.unitPrice) || null
+    }
+  } catch (e) {
+    console.warn('解析采购明细失败', e)
+  }
+  form.supplyCategory = pr.supplyCategory || 'SOCIAL'
+  form.allocationId = pr.allocationId || null
+  form.purchaseOrderNo = pr.requestNo || ''
+  // 查找对应的验收记录ID
+  loadPurchaseReceiptId(prId)
+}
+
+async function loadPurchaseReceiptId(prId) {
+  try {
+    const resp = await api.get('/api/purchase-receipt', { params: { purchaseRequestId: prId, page: 1, size: 10 } })
+    const body = resp.data
+    if (body.code === 200) {
+      const receipts = body.data?.records || []
+      const passReceipt = receipts.find(r => r.inspectResult === 'PASS')
+      form.purchaseReceiptId = passReceipt ? passReceipt.id : null
+    }
+  } catch (e) {
+    console.warn('加载验收记录失败', e)
   }
 }
 
@@ -312,6 +399,10 @@ function resetForm() {
   form.syncExpense = false
   form.bankAccountId = null
   form.allocationId = null
+  form.inMode = 'DIRECT'
+  form.purchaseRequestId = null
+  form.purchaseReceiptId = null
+  selectedPurchaseRequest.value = null
 }
 
 function openCreate() {
@@ -321,6 +412,8 @@ function openCreate() {
   searchMaterials('')
   loadBankAccounts()
   loadAllocations()
+  loadSuppliers()
+  loadReadyPurchaseRequests()
 }
 
 function openEdit(row) {
@@ -367,7 +460,9 @@ async function submit() {
       inDate: form.inDate,
       supplyCategory: form.supplyCategory,
       remark: form.remark || null,
-      allocationId: form.supplyCategory === 'CENTRALIZED' ? form.allocationId : null
+      allocationId: form.supplyCategory === 'CENTRALIZED' ? form.allocationId : null,
+      inMode: form.inMode || 'DIRECT',
+      purchaseReceiptId: form.purchaseReceiptId || null
     }
     let resp
     if (editingId.value) {
